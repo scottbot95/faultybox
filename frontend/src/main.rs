@@ -34,7 +34,7 @@ fn hello_server() -> Html {
 
     {
         let data = data.clone();
-        use_effect(move || {
+        use_effect_with_deps(move |()| {
             spawn_local(async move {
                 let resp = Request::get("/api/hello").send().await;
                 let result = match resp {
@@ -51,7 +51,7 @@ fn hello_server() -> Html {
                 };
                 data.set(Some(result));
             })
-        });
+        }, ());
     }
 
     match data.as_ref() {
