@@ -1,2 +1,5 @@
 [workspace]
 members = [ "server", "frontend" ]
+
+[workspace.dependencies]
+log = "0.4.17"

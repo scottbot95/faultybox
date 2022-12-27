@@ -1,9 +1,9 @@
 use std::{net::{SocketAddr, IpAddr, Ipv4Addr}, str::FromStr};
 
-use axum::{Router, routing::get, response::IntoResponse};
+use axum::{Router, routing::get, response::IntoResponse, body::{boxed, Body}, http::{Response, StatusCode}};
 use clap::Parser;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower::{ServiceBuilder, ServiceExt};
+use tower_http::{trace::TraceLayer, services::ServeDir};
 
 
 #[derive(Parser, Debug)]
@@ -20,6 +20,10 @@ struct Opt {
     /// Set the listen port
     #[clap(short = 'p', long = "port", default_value = "8080")]
     port: u16,
+
+    /// Set the directory where static files are to be found
+    #[clap(long = "static-dir", default_value = "./dist")]
+    static_dir: String,
 }
 
 #[tokio::main]
@@ -35,7 +39,16 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/", get(hello))
+        .route("/api/hello", get(hello))
+        .fallback(|req| async move {
+            match ServeDir::new(opt.static_dir).oneshot(req).await {
+                Ok(res) => res.map(boxed),
+                Err(err) => Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(boxed(Body::from(format!("error: {err}"))))
+                    .expect("expected response"),
+            }
+        })
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let sock_addr = SocketAddr::from((
