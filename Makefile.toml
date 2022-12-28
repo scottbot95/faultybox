@@ -1,5 +1,13 @@
 [config]
 default_to_workspace = false
+unstable_features = [ "CTRL_C_HANDLING" ]
+
+[tasks.watch-frontend]
+description = "Build, watch the Rust WASM app"
+install_crate = { crate_name = "trunk", binary = "trunk", test_arg = "--version"}
+command = "trunk"
+args = [ "watch", "--public-url", "/assets/"]
+cwd = "./frontend"
 
 [tasks.serve-frontend]
 description = "Build, watch & serve the Rust WASM app"
@@ -11,14 +19,16 @@ cwd = "./frontend"
 [tasks.serve-backend]
 description = "Build, watch and run the Rust backend server"
 command = "cargo"
-args = ["run", "--bin", "server", "--", "--port", "8081"]
-watch = { watch = ["./server/", "Cargo.toml"]}
+args = ["run", "--bin", "server", "${@}"]
+watch = { watch = ["./server/", "Cargo.toml"] }
 
 [tasks.build-frontend]
 description = "Build frontend using trunk"
 install_crate = { crate_name = "trunk", binary = "trunk", test_arg = "--version"}
-command = "trunk"
-args = [ "build", "--public-url", "/assets/" ]
+script = '''
+trunk build --public-url /assets/
+rsync -avr ./assets/ ../dist/
+'''
 cwd = "./frontend"
 
 [tasks.build-backend]
@@ -30,3 +40,9 @@ args = ["build", "--bin", "server"]
 clear = true
 description = "Build the frontend and backend for Gecko"
 run_task.name = ["build-frontend", "build-backend"]
+
+[tasks.run]
+description = "Run the SPA"
+dependencies = [ "build-frontend", "build-backend" ]
+command = "cargo"
+args = ["run", "--bin", "server", "${@}"]
