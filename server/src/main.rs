@@ -1,7 +1,8 @@
-use std::{net::{SocketAddr, IpAddr, Ipv4Addr}, str::FromStr};
+use std::{net::{SocketAddr, IpAddr, Ipv4Addr}, str::FromStr, path::PathBuf};
 
 use axum::{Router, routing::get, response::IntoResponse, body::{boxed, Body}, http::{Response, StatusCode}};
 use clap::Parser;
+use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::{trace::TraceLayer, services::ServeDir};
 
@@ -40,15 +41,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/hello", get(hello))
-        .fallback(|req| async move {
-            match ServeDir::new(opt.static_dir).oneshot(req).await {
-                Ok(res) => res.map(boxed),
-                Err(err) => Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(boxed(Body::from(format!("error: {err}"))))
-                    .expect("expected response"),
-            }
-        })
+        .merge(axum_extra::routing::SpaRouter::new("/assets", opt.static_dir))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let sock_addr = SocketAddr::from((
