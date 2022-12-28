@@ -1,0 +1,32 @@
+[config]
+default_to_workspace = false
+
+[tasks.serve-frontend]
+description = "Build, watch & serve the Rust WASM app"
+install_crate = { crate_name = "trunk", binary = "trunk", test_arg = "--version"}
+command = "trunk"
+args = ["serve", "--proxy-backend=http://[::1]:8081/api/"]
+cwd = "./frontend"
+
+[tasks.serve-backend]
+description = "Build, watch and run the Rust backend server"
+command = "cargo"
+args = ["run", "--bin", "server", "--", "--port", "8081"]
+watch = { watch = ["./server/", "Cargo.toml"]}
+
+[tasks.build-frontend]
+description = "Build frontend using trunk"
+install_crate = { crate_name = "trunk", binary = "trunk", test_arg = "--version"}
+command = "trunk"
+args = [ "build", "--public-url", "/assets/" ]
+cwd = "./frontend"
+
+[tasks.build-backend]
+description = "Build backend server"
+command = "cargo"
+args = ["build", "--bin", "server"]
+
+[tasks.build]
+clear = true
+description = "Build the frontend and backend for Gecko"
+run_task.name = ["build-frontend", "build-backend"]

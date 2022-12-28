@@ -1,10 +1,10 @@
-use std::{net::{SocketAddr, IpAddr, Ipv4Addr}, str::FromStr, path::PathBuf};
+use std::{net::{SocketAddr, IpAddr, Ipv4Addr}, str::FromStr};
 
-use axum::{Router, routing::get, response::IntoResponse, body::{boxed, Body}, http::{Response, StatusCode}};
+use axum::{Router, routing::get, response::IntoResponse};
 use clap::Parser;
-use tokio::fs;
-use tower::{ServiceBuilder, ServiceExt};
-use tower_http::{trace::TraceLayer, services::ServeDir};
+
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
 
 
 #[derive(Parser, Debug)]
