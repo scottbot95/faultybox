@@ -1,4 +1,7 @@
+mod pages;
+
 use gloo_net::http::Request;
+use pages::gecko::GeckoPage;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -10,12 +13,16 @@ enum Route {
 
     #[at("/hello-server")]
     HelloServer,
+
+    #[at("/gecko")]
+    Gecko,
 }
 
 fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! { <h1>{ "Hello Frontend" }</h1> },
         Route::HelloServer => html! { <HelloServer /> },
+        Route::Gecko => html! { <GeckoPage /> },
     }
 }
 
