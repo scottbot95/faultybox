@@ -6,48 +6,53 @@ use yew::{prelude::*, platform::spawn_local};
 
 #[function_component(GeckoPage)]
 pub fn page() -> Html {
-  let topic = use_state(|| None);
+  let topic = use_state(|| None).clone();
 
-  {
-    let topic = topic.clone();
-    use_effect_with_deps(move |()| {
-      spawn_local(async move {
-        let resp = Request::get("/api/gecko/random-card").send().await;
-        let result = match resp {
-          Ok(resp) => if resp.ok() {
-            resp.json::<Topic>()
-                .await
-                .map(Rc::new)
-                .map_err(|err| err.to_string())
-          } else {
-            Err(format!(
-              "Error fetching data {} ({})",
-              resp.status(),
-              resp.status_text(),
-            ))
-          }
-          Err(err) => Err(err.to_string()),
-        };
-
-        topic.set(Some(result));
-      });
-    }, ());
-  }
-
-  let topic = match topic.as_ref() {
-    None => html! { <div>{"No server response"}</div> },
-    Some(Ok(topic)) => html! {
-      <TopicCard topic={topic}/>
-    },
-    // Some(Err(err)) => err,
-    _ => html!{ <div/> },
-  };
+  let topic_card = topic.as_ref().map(|res| {
+    match res {
+      Ok(topic) => html! {
+        <TopicCard topic={topic}/>
+      },
+      Err(err) => html! {
+        <div>
+        {"An error occurred fetching topic from server"}
+        {err}
+        </div>
+      },
+    }
+  });
 
   html! {
     <div class="Gecko">
-      { topic }
+      { topic_card }
+      <button onclick={move |_| {
+        fetch_topic(topic.setter());
+      }} >{"New topic"}</button>
     </div>
   }
+}
+
+fn fetch_topic(setter: UseStateSetter<Option<Result<Rc<Topic>, String>>>) {
+  spawn_local(async move {
+    let resp = Request::get("/api/gecko/random-card").send().await;
+    let result = match resp {
+      Ok(resp) => if resp.ok() {
+        resp.json::<Topic>()
+            .await
+            .map(Rc::new)
+            .map_err(|err| err.to_string())
+      } else {
+        Err(format!(
+          "Error fetching data {} ({})",
+          resp.status(),
+          resp.status_text(),
+        ))
+      }
+      Err(err) => Err(err.to_string()),
+    };
+
+    setter.set(Some(result));
+  });
 }
 
 #[derive(Properties, PartialEq)]
