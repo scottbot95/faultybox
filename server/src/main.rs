@@ -1,10 +1,16 @@
+mod api;
+
 use std::{net::{SocketAddr, IpAddr, Ipv4Addr}, str::FromStr};
 
-use axum::{Router, routing::get, response::IntoResponse};
+use axum::{Router, response::IntoResponse};
 use clap::Parser;
+
+use tokio::signal;
 
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+
+use crate::api::api_router;
 
 
 #[derive(Parser, Debug)]
@@ -40,7 +46,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/api/hello", get(hello))
+        .nest("/api", api_router())
         .merge(axum_extra::routing::SpaRouter::new("/assets", opt.static_dir))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
@@ -53,6 +59,7 @@ async fn main() {
 
     axum::Server::bind(&sock_addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Unable to start server")
 }
@@ -60,4 +67,31 @@ async fn main() {
 
 async fn hello() -> impl IntoResponse {
     "Hello from server!"
+}
+
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("signal received, starting graceful shutdown");
 }

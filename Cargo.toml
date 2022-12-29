@@ -3,3 +3,6 @@ members = [ "server", "frontend" ]
 
 [workspace.dependencies]
 log = "0.4.17"
+serde = { version = "1", features = ["derive"] }
+ron = "0.8"
+lazy_static = "1.4"

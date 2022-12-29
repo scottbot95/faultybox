@@ -41,8 +41,12 @@ clear = true
 description = "Build the frontend and backend for Gecko"
 run_task.name = ["build-frontend", "build-backend"]
 
-[tasks.run]
-description = "Run the SPA"
-dependencies = [ "build-frontend", "build-backend" ]
+[tasks.run-backend]
+description = "Start the server locally"
 command = "cargo"
 args = ["run", "--bin", "server", "${@}"]
+
+[tasks.run]
+description = "Run the SPA"
+dependencies = [ "build-frontend" ]
+run_task = "run-backend"
