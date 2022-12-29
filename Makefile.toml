@@ -25,9 +25,12 @@ watch = { watch = ["./server/", "Cargo.toml"] }
 [tasks.build-frontend]
 description = "Build frontend using trunk"
 install_crate = { crate_name = "trunk", binary = "trunk", test_arg = "--version"}
+script_runner = "@duckscript"
 script = '''
-trunk build --public-url /assets/
-rsync -avr ./assets/ ../dist/
+exec trunk build --public-url /assets/
+if is_path_exists ./assets
+    cp ./assets ../dist
+end
 '''
 cwd = "./frontend"
 
