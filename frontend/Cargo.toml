@@ -11,6 +11,7 @@ log.workspace = true
 serde_json.workspace = true
 console_error_panic_hook = "0.1.7"
 gloo-net = "0.2.5"
+patternfly-yew = "0.3"
 wasm-bindgen-futures = "0.4.33"
 wasm-logger = "0.2.0"
 yew = { version = "0.20.0", features = [ "csr" ]}
