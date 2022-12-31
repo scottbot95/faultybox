@@ -37,12 +37,12 @@ cwd = "./frontend"
 [tasks.build-backend]
 description = "Build backend server"
 command = "cargo"
-args = ["build", "--bin", "server"]
+args = ["build", "--bin", "server", "${@}"]
 
 [tasks.build]
 clear = true
 description = "Build the frontend and backend for Gecko"
-run_task.name = ["build-frontend", "build-backend"]
+dependencies = ["build-frontend", "build-backend"]
 
 [tasks.run-backend]
 description = "Start the server locally"

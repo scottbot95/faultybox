@@ -1,6 +1,9 @@
 {
+    "name": "faultybox",
+    "version": "0.1.0",
     "private": true,
     "dependencies": {
-        "@patternfly/patternfly": "^4.222.4"
+        "@patternfly/patternfly": "^4.222.4",
+        "sass": "^1.50"
     }
 }
