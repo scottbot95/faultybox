@@ -1,0 +1,68 @@
+$rowHeaderSize: 4em;
+$textColor: #51ACA3;
+$checkerColor: #59A69C;
+
+h1 {
+    font-size: large;
+}
+
+.Gecko {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .Topic {
+        table-layout: fixed;
+
+        h1 {
+            color: $textColor;
+            font-weight: bold;
+            font-size: $rowHeaderSize;
+            text-align: center;
+        }
+
+        thead {
+            border: 1px solid;
+            border-bottom: none;
+        }
+
+        tbody {
+            border: 1px solid;
+            border-top: none;
+        }
+
+        th {
+            color: $textColor;
+            font-size: $rowHeaderSize;
+            text-align: center;
+        }
+
+        td {
+            font-size: 2em;
+            text-align: center;
+            padding: 10px;
+        }
+
+        tbody tr:nth-child(odd) td:nth-child(even),
+        tbody tr:nth-child(even) td:nth-child(odd):not(:first-child) {
+            background-color: $checkerColor;
+        }
+
+        td:first-child {
+            font-weight: bold;
+            color: $textColor;
+            // background-color: transparent !important;
+            font-size: 4em;
+            padding-right: 15px;
+        }
+
+        td:not(:first-child) {
+            width: 150px;
+            height: 100px
+        }
+    }
+
+    button {
+        margin-top: 1em;
+    }
+}
