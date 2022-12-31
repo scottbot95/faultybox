@@ -5,6 +5,10 @@
     nixpkgs.url      = "github:NixOS/nixpkgs/nixos-22.11";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url  = "github:numtide/flake-utils";
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
