@@ -54,7 +54,8 @@ let
     inherit cargoArtifacts src buildInputs nativeBuildInputs;
 
     postPatch = ''
-      cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/\@patternfly ./frontend/node_modules
+      mkdir -p ./frontend/node_modules
+      cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/\@patternfly ./frontend/node_modules/
     '';
 
     buildPhaseCargoCommand = ''

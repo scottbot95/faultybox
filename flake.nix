@@ -26,7 +26,7 @@
   };
 
   outputs = { self, nixpkgs, crane, flake-utils, advisory-db, rust-overlay, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+    (flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -58,5 +58,7 @@
           # Extra inputs can be added here
           nativeBuildInputs = [ rustToolchain ] ++ packages.faultybox.nativeBuildInputs;
         };
-      });
+      })) // {
+      nixosModules.faultybox = import ./nix/module.nix { flake = self; };
+    };
 }
