@@ -2,3 +2,5 @@ target/
 dist/
 .idea/
 result
+
+proxmox.json
