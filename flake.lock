@@ -18,11 +18,11 @@
     },
     "ci-utils": {
       "locked": {
-        "lastModified": 1674356419,
-        "narHash": "sha256-rq/xHtJZq2s8TGzDwSBUlzmPv/jds2SMk8VN0eD3kns=",
+        "lastModified": 1674413992,
+        "narHash": "sha256-grlozSCAj4DROcYXLxddhH14rCfQbeN+ExzNVrcJ/J8=",
         "owner": "scottbot95",
         "repo": "homelab-ci",
-        "rev": "8947c11875f62ce671e978bda7300ab942448156",
+        "rev": "caa734c1e3ea82ac2e905b7b33725f204e742646",
         "type": "github"
       },
       "original": {
