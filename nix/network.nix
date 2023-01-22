@@ -26,6 +26,10 @@ in ci-utils.lib.mkNetwork {
         enableSSDEmulation = true;
         enableDiscard = true;
       }];
+      network = [{
+        bridge = "vmbr0";
+        tag = 20;
+      }];
     };
 
     networking.hostName = "games";
