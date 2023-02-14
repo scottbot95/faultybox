@@ -4,8 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    ci-utils.url = "github:scottbot95/homelab-ci/main";
-
     crane = {
       url = "github:ipetkov/crane";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -25,12 +23,9 @@
         flake-utils.follows = "flake-utils";
       };
     };
-
-    nixops-proxmox.url = "github:scottbot95/nixops-proxmox";
-    nixops-proxmox.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, crane, flake-utils, advisory-db, rust-overlay, nixops-proxmox, ... }:
+  outputs = { self, nixpkgs, crane, flake-utils, advisory-db, rust-overlay, ... }:
     (flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs {
@@ -63,16 +58,9 @@
           # Extra inputs can be added here
           nativeBuildInputs = [ 
             rustToolchain
-
-            # nixops for testing deployment
-            pkgs.nixopsUnstable
-            pkgs.hci
-            nixops-proxmox.packages.${system}.default
           ] ++ packages.faultybox.nativeBuildInputs;
         };
       })) // {
       nixosModules.faultybox = import ./nix/module.nix { flake = self; };
-
-      nixopsConfigurations.default = import ./nix/network.nix { inherit self; };
     };
 }

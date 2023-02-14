@@ -16,22 +16,6 @@
         "type": "github"
       }
     },
-    "ci-utils": {
-      "locked": {
-        "lastModified": 1674413992,
-        "narHash": "sha256-grlozSCAj4DROcYXLxddhH14rCfQbeN+ExzNVrcJ/J8=",
-        "owner": "scottbot95",
-        "repo": "homelab-ci",
-        "rev": "caa734c1e3ea82ac2e905b7b33725f204e742646",
-        "type": "github"
-      },
-      "original": {
-        "owner": "scottbot95",
-        "ref": "main",
-        "repo": "homelab-ci",
-        "type": "github"
-      }
-    },
     "crane": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -101,42 +85,6 @@
         "type": "github"
       }
     },
-    "flake-utils_3": {
-      "locked": {
-        "lastModified": 1659877975,
-        "narHash": "sha256-zllb8aq3YO3h8B/U0/J1WBgAL8EX5yWf5pMj3G0NAmc=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "c0e246b9b83f637f4681389ecabcb2681b4f3af0",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
-    "nixops-proxmox": {
-      "inputs": {
-        "flake-utils": "flake-utils_3",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1674338845,
-        "narHash": "sha256-1Qe8hk5S9n2fODmfpafTR0bs1O0v5oESCD6rp8h3yDY=",
-        "owner": "scottbot95",
-        "repo": "nixops-proxmox",
-        "rev": "a0ddb6b3af92d8f94266f45579146428ff02f8b9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "scottbot95",
-        "repo": "nixops-proxmox",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1673947312,
@@ -156,10 +104,8 @@
     "root": {
       "inputs": {
         "advisory-db": "advisory-db",
-        "ci-utils": "ci-utils",
         "crane": "crane",
         "flake-utils": "flake-utils_2",
-        "nixops-proxmox": "nixops-proxmox",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay_2"
       }
