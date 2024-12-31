@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use gloo_net::http::Request;
+use patternfly_yew::prelude::*;
 use models::{Topic, TOPIC_GRID_COLS, TOPIC_GRID_ROWS};
 use yew::{platform::spawn_local, prelude::*};
 
@@ -14,8 +15,8 @@ pub fn page() -> Html {
         },
         Err(err) => html! {
           <div>
-          {"An error occurred fetching topic from server"}
-          {err}
+            {"An error occurred fetching topic from server"}
+            {err}
           </div>
         },
     });
@@ -26,11 +27,16 @@ pub fn page() -> Html {
             topic.set(Some(fetch_topic().await));
         });
     });
-
     html! {
       <div class="Gecko">
-        { topic_card }
-        <button onclick={new_topic}>{"New topic"}</button>
+        <Grid>
+          <GridItem cols={[8]}>
+            { topic_card }
+            </GridItem>
+            <GridItem cols={[4]}>
+              <button onclick={new_topic}>{"New topic"}</button>
+          </GridItem>
+        </Grid>
       </div>
     }
 }

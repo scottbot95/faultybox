@@ -27,7 +27,7 @@ description = "Build frontend using trunk"
 install_crate = { crate_name = "trunk", binary = "trunk", test_arg = "--version"}
 script_runner = "@duckscript"
 script = '''
-exec trunk build --public-url /assets/
+exec --fail-on-error trunk build --public-url /assets/
 if is_path_exists ./assets
     cp ./assets ../dist
 end

@@ -6,11 +6,12 @@ use std::{
 };
 
 use axum::{response::IntoResponse, Router};
+use std::path::Path;
 use clap::Parser;
 
 use tokio::signal;
 
-use tower::ServiceBuilder;
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 
 use crate::api::api_router;
@@ -47,26 +48,33 @@ async fn main() {
     // enable console logging
     tracing_subscriber::fmt::init();
 
-    let app = Router::new()
-        .nest("/api", api_router())
-        .merge(axum_extra::routing::SpaRouter::new(
-            "/assets",
-            opt.static_dir,
-        ))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)),
         opt.port,
     ));
+    let listener = tokio::net::TcpListener::bind(sock_addr)
+        .await
+        .unwrap_or_else(|_| panic!("Could not bind to {}", sock_addr));
 
-    log::info!("listening on http://{}", sock_addr);
+    log::info!("listening on http://{}", listener.local_addr().unwrap());
 
-    axum::Server::bind(&sock_addr)
-        .serve(app.into_make_service())
+    let app = make_router(opt);
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Unable to start server")
+}
+
+fn make_router(opt: Opt) -> Router {
+    let static_dir = Path::new(&opt.static_dir);
+    let serve_dir = ServeDir::new(&opt.static_dir);
+
+    Router::new()
+        .nest("/api", api_router())
+        .nest_service("/assets", serve_dir)
+        .fallback_service(ServeFile::new(static_dir.join("index.html")))
+        .layer(TraceLayer::new_for_http())
 }
 
 async fn hello() -> impl IntoResponse {

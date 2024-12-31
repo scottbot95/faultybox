@@ -6,7 +6,7 @@ let
   inherit (pkgs) lib buildNpmPackage;
 
   node_modules = buildNpmPackage rec {
-    pname = "faultybox-frontend";
+    pname = "faultybox-frontend-assets";
     version = "0.1.0";
     src = lib.cleanSourceWith {
       src = ../frontend;
@@ -16,7 +16,8 @@ let
 
     dontNpmBuild = true;
 
-    npmDepsHash = "sha256-LMGggPsm3AgKRscSC1sl2dLi8TT0dHW4VmmU4HB/x/Y=";
+    npmDepsHash = "sha256-NPz8drcMG8uaRthbGJuJojObnCzYrsN8tG8CmFmBmg0=";
+#    npmDepsHash = lib.fakeHash;
   };
 
   src = let
@@ -59,8 +60,9 @@ let
     '';
 
     buildPhaseCargoCommand = ''
-      export PATH=${node_modules}/lib/node_modules/faultybox/node_modules/.bin:$PATH 
-      cargo make build -j $NIX_BUILD_CORES --release
+      export PATH=${node_modules}/lib/node_modules/faultybox/node_modules/.bin:$PATH
+      cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
+      cargo make build -j $NIX_BUILD_CORES --release --message-format json-render-diagnostics >$cargoBuildLog
     '';
 
     installPhaseCommand = ''
