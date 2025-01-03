@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use gloo_net::http::Request;
-use patternfly_yew::prelude::*;
 use models::{Topic, TOPIC_GRID_COLS, TOPIC_GRID_ROWS};
+use patternfly_yew::prelude::*;
 use yew::{platform::spawn_local, prelude::*};
 
 #[function_component(GeckoPage)]

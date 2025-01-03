@@ -1,3 +1,6 @@
+pub mod room;
+pub mod ws;
+
 use serde::{Deserialize, Serialize};
 
 pub const TOPIC_GRID_ROWS: usize = 4;

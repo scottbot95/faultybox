@@ -1,3 +1,4 @@
+use crate::AppState;
 use axum::{extract::Path, http::Response, response::IntoResponse, routing::get, Router};
 use lazy_static::lazy_static;
 use models::Topic;
@@ -9,11 +10,11 @@ lazy_static! {
     static ref TOPICS: Vec<Topic> = ron::from_str(TOPICS_RON).unwrap();
 }
 
-pub fn gecko_api() -> Router {
+pub fn gecko_api() -> Router<AppState> {
     Router::new()
         .route("/random-card", get(random_card))
         .route("/topics", get(list_topics))
-        .route("/topics/{id}", get(get_topic))
+        .route("/topics/:id", get(get_topic))
 }
 
 async fn list_topics() -> impl IntoResponse {

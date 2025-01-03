@@ -1,13 +1,13 @@
 mod api;
 
+use api::ApiState;
+use axum::{extract::FromRef, response::IntoResponse, Router};
+use clap::Parser;
+use std::path::Path;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
 };
-
-use axum::{response::IntoResponse, Router};
-use std::path::Path;
-use clap::Parser;
 
 use tokio::signal;
 
@@ -36,6 +36,11 @@ struct Opt {
     static_dir: String,
 }
 
+#[derive(FromRef, Clone, Default)]
+struct AppState {
+    api_state: ApiState,
+}
+
 #[tokio::main]
 async fn main() {
     let opt = Opt::parse();
@@ -48,7 +53,6 @@ async fn main() {
     // enable console logging
     tracing_subscriber::fmt::init();
 
-
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)),
         opt.port,
@@ -60,7 +64,9 @@ async fn main() {
     log::info!("listening on http://{}", listener.local_addr().unwrap());
 
     let app = make_router(opt);
-    axum::serve(listener, app)
+    tracing::trace!("Router configured: {:?}", app);
+
+    axum::serve(listener, app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Unable to start server")
@@ -75,6 +81,7 @@ fn make_router(opt: Opt) -> Router {
         .nest_service("/assets", serve_dir)
         .fallback_service(ServeFile::new(static_dir.join("index.html")))
         .layer(TraceLayer::new_for_http())
+        .with_state(AppState::default())
 }
 
 async fn hello() -> impl IntoResponse {

@@ -1,13 +1,20 @@
 mod gecko;
+mod room;
 
-use axum::{routing::get, Router};
+use crate::api::room::room_api;
+use crate::{hello, AppState};
+use axum::{extract::FromRef, routing::get, Router};
 
-use crate::hello;
+use self::{gecko::gecko_api, room::RoomState};
 
-use self::gecko::gecko_api;
+#[derive(FromRef, Clone, Default)]
+pub struct ApiState {
+    rooms: RoomState,
+}
 
-pub fn api_router() -> Router {
+pub fn api_router() -> Router<AppState> {
     Router::new()
         .route("/hello", get(hello))
         .nest("/gecko", gecko_api())
+        .nest("/room", room_api())
 }
