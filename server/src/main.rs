@@ -1,14 +1,14 @@
 mod api;
+mod ws;
 
 use api::ApiState;
-use axum::{extract::FromRef, response::IntoResponse, Router};
+use axum::{extract::FromRef, Router};
 use clap::Parser;
 use std::path::Path;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
 };
-
 use tokio::signal;
 
 use tower_http::services::{ServeDir, ServeFile};
@@ -66,7 +66,7 @@ async fn main() {
     let app = make_router(opt);
     tracing::trace!("Router configured: {:?}", app);
 
-    axum::serve(listener, app.into_make_service())
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Unable to start server")
@@ -74,7 +74,7 @@ async fn main() {
 
 fn make_router(opt: Opt) -> Router {
     let static_dir = Path::new(&opt.static_dir);
-    let serve_dir = ServeDir::new(&opt.static_dir);
+    let serve_dir = ServeDir::new(static_dir);
 
     Router::new()
         .nest("/api", api_router())
@@ -82,10 +82,6 @@ fn make_router(opt: Opt) -> Router {
         .fallback_service(ServeFile::new(static_dir.join("index.html")))
         .layer(TraceLayer::new_for_http())
         .with_state(AppState::default())
-}
-
-async fn hello() -> impl IntoResponse {
-    "Hello from server!"
 }
 
 async fn shutdown_signal() {

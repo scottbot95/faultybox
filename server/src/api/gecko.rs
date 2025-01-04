@@ -14,7 +14,7 @@ pub fn gecko_api() -> Router<AppState> {
     Router::new()
         .route("/random-card", get(random_card))
         .route("/topics", get(list_topics))
-        .route("/topics/:id", get(get_topic))
+        .route("/topics/{id}", get(get_topic))
 }
 
 async fn list_topics() -> impl IntoResponse {

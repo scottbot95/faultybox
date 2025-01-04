@@ -2,8 +2,8 @@ mod gecko;
 mod room;
 
 use crate::api::room::room_api;
-use crate::{hello, AppState};
-use axum::{extract::FromRef, routing::get, Router};
+use crate::AppState;
+use axum::{extract::FromRef, Router};
 
 use self::{gecko::gecko_api, room::RoomState};
 
@@ -14,7 +14,6 @@ pub struct ApiState {
 
 pub fn api_router() -> Router<AppState> {
     Router::new()
-        .route("/hello", get(hello))
         .nest("/gecko", gecko_api())
         .nest("/room", room_api())
 }
