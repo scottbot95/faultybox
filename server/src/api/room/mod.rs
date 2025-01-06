@@ -1,31 +1,45 @@
 mod create;
 mod join;
 mod auth;
+mod socket;
 
 use crate::AppState;
 use axum::extract::FromRef;
-use axum::routing::any;
+use axum::routing::{any, get, post};
 use axum::Router;
 use models::room::{Room, RoomId};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 type ArcLock<T> = Arc<RwLock<T>>;
 
 #[derive(Clone, Default)]
-pub(crate) struct RoomState {
+pub(crate) struct RoomApiState {
     // Outer RwLock enables insertions "concurrent" insertions,
     // inner RwLock enables independently modifying different rooms
-    rooms: ArcLock<HashMap<RoomId, ArcLock<Room>>>,
+    rooms: ArcLock<HashMap<RoomId, ArcLock<RoomState>>>,
 }
 
-impl FromRef<AppState> for RoomState {
+#[derive(Clone, Debug)]
+pub struct RoomState {
+    room: Room,
+    clients: HashSet<ClientId>,
+}
+
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct ClientId(pub String);
+
+impl AsRef<String> for ClientId {
+    fn as_ref(&self) -> &String { &self.0 }
+}
+
+impl FromRef<AppState> for RoomApiState {
     fn from_ref(input: &AppState) -> Self {
         input.api_state.rooms.clone()
     }
 }
 
-impl RoomState {
+impl RoomApiState {
     async fn acquire_id(&self) -> RoomId {
         let rooms = self.rooms.read().await;
         let mut room_id = RoomId::random();
@@ -47,6 +61,7 @@ impl RoomState {
 
 pub fn room_api() -> Router<AppState> {
     Router::new()
-        .route("/create/{gameId}", any(create::create_room))
-        .route("/join/{roomId}", any(join::join_room))
+        .route("/create/{gameId}", post(create::create_room))
+        .route("/join/{roomId}", get(join::join_room))
+        .route("/connect", any(socket::connect))
 }

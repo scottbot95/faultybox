@@ -1,14 +1,19 @@
 # Room API
 
-### Auth
+### Creating Room
+1. `POST /api/room/create/{gameId}`
+   1. Receives a room token which contains a `roomId` and a client ID
 
-[//]: # (Don't actually need this I think...)
-[//]: # (1. Client creates a "clientId" when joining a new room. Stored in cookie &#40;`faulty_client_id`?&#41; )
-When joining a room the server will authenticate a client by:
-1. Check if clientId is already in the room
-   1. If so, expect `Faulty-Room-Token` header to be valid (matches hmac with local secret) otherwise reject with 401
-   2. If connection accepted, kick previous connection if it existed
-   3. If new client, generate a `Faulty-Room-Token` for them.
-      1. Client then needs to store the token to present any time it re-connects
+### Joining Room
+1. `POST /api/room/join/{roomId}`
+   1. Receives a room token which contains a `roomId` and a client ID
 
-### Create
+### Connecting
+1. Form websocket to `/api/room/connect` with the room token in the `Room-Token` header
+
+Reconnecting is the same, just re-use the same room token and you will be treated as the same player
+
+
+## TODO
+
+- [ ] Boot other connections if a new one comes in with the same token

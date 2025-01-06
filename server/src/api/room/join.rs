@@ -1,41 +1,35 @@
 use axum::extract::{Path, State};
-use axum::response::Response;
-use models::room::{Room, RoomId};
-use models::ws::{ClientMsg, ServerMsg};
-use crate::api::room::{ArcLock, RoomState};
-use crate::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::http::StatusCode;
+use axum::Json;
+use axum::response::{IntoResponse, Response};
+use jsonwebtoken::encode;
+use rand::Rng;
+use models::room::api::{Claims, JoinRoomOutput};
+use models::room::RoomId;
+use crate::api::room::{ClientId, RoomApiState};
+use crate::api::room::auth::{create_token, AuthError};
 
 pub async fn join_room(
     Path(room_id): Path<RoomId>,
-    ws: WebSocketUpgrade<ServerMsg, ClientMsg>,
-    State(state): State<RoomState>,
-) -> Response {
+    State(state): State<RoomApiState>,
+) -> Result<Json<JoinRoomOutput>, AuthError> {
     let room = state.rooms.read().await.get(&room_id).unwrap().clone();
-    ws.on_upgrade(move |socket| handle_socket(socket, room_id, room))
-}
+    let client_id: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(12)
+        .map(char::from)
+        .collect();
 
-#[allow(unused)]
-async fn handle_socket(
-    mut socket: WebSocket<ServerMsg, ClientMsg>,
-    room_id: RoomId,
-    room: ArcLock<Room>,
-) {
-    tracing::trace!("Joined room {}", room_id);
-    
-    socket.send_item(ServerMsg::RoomJoined(room_id, room.read().await.clone())).await;
-
-    while let Some(msg) = socket.recv().await {
-        let msg = match msg {
-            Ok(Message::Item(msg)) => msg,
-            Ok(_) => continue,
-            Err(err) => {
-                tracing::error!("got error: {}", err);
-                continue;
-            }
-        };
-        
-        tracing::trace!("Message received: {:?}", msg);
+    if !room.write().await.clients.insert(ClientId(client_id.clone())) {
+        tracing::warn!("Client {} already connected", &client_id);
     }
-    
-    tracing::trace!("Websocket closed");
+
+    let claims = Claims {
+        sub: client_id,
+        room_id,
+    };
+
+    let token = create_token(&claims)?;
+
+    Ok(Json(JoinRoomOutput { token }))
 }
