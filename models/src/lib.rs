@@ -12,3 +12,8 @@ pub struct Topic {
     // #[serde(with = "serde_arrays")]
     pub words: Vec<String>,
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Copy, Clone)]
+pub enum GameKind {
+    Gecko,
+}

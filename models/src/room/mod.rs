@@ -2,6 +2,7 @@ pub mod api;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use crate::GameKind;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct RoomId(pub String);
@@ -26,5 +27,5 @@ impl RoomId {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Room {
-    pub game: String,
+    pub game: GameKind,
 }

@@ -19,8 +19,10 @@ pub async fn connect(
         .ok_or_else(|| StatusCode::FORBIDDEN.into_response())?
         .clone();
 
-    if !room.read().await.clients.contains(&ClientId(claims.sub.clone())) {
-        return Ok((StatusCode::FORBIDDEN, "Invalid token").into_response());
+    if let Some(room) = room.read().await.as_ref() {
+        if !room.clients.contains(&ClientId(claims.sub.clone())) {
+            return Ok((StatusCode::FORBIDDEN, "Invalid token").into_response());
+        }
     }
 
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, claims, room)))
@@ -29,15 +31,17 @@ pub async fn connect(
 async fn handle_socket(
     mut socket: WebSocket<ServerMsg, ClientMsg>,
     claims: Claims,
-    room: ArcLock<RoomState>,
+    room: ArcLock<Option<RoomState>>,
 ) {
     let room_id = claims.room_id;
     tracing::trace!("Client {} connected to room {}", &claims.sub, room_id);
 
-    socket
-        .send_item(ServerMsg::RoomJoined(room_id, room.read().await.clone().room))
-        .await
-        .expect("Failed to send room joined");
+    if let Some(state) = room.read().await.as_ref() {
+        socket
+            .send_item(ServerMsg::RoomJoined(room_id, state.room.clone()))
+            .await
+            .expect("Failed to send room joined");
+    }
 
     while let Some(msg) = socket.recv().await {
         let msg = match msg {

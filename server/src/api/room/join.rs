@@ -20,8 +20,10 @@ pub async fn join_room(
         .map(char::from)
         .collect();
 
-    if !room.write().await.clients.insert(ClientId(client_id.clone())) {
-        tracing::warn!("Client {} already connected", &client_id);
+    if let Some(state) = room.write().await.as_mut() {
+        if !state.clients.insert(ClientId(client_id.clone())) {
+            tracing::warn!("Client {} already connected", &client_id);
+        }
     }
 
     let claims = Claims {

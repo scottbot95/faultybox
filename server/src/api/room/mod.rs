@@ -17,7 +17,7 @@ type ArcLock<T> = Arc<RwLock<T>>;
 pub(crate) struct RoomApiState {
     // Outer RwLock enables insertions "concurrent" insertions,
     // inner RwLock enables independently modifying different rooms
-    rooms: ArcLock<HashMap<RoomId, ArcLock<RoomState>>>,
+    rooms: ArcLock<HashMap<RoomId, ArcLock<Option<RoomState>>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -41,7 +41,7 @@ impl FromRef<AppState> for RoomApiState {
 
 impl RoomApiState {
     async fn acquire_id(&self) -> RoomId {
-        let rooms = self.rooms.read().await;
+        let mut rooms = self.rooms.write().await;
         let mut room_id = RoomId::random();
         let mut attempts = 1;
 
@@ -54,6 +54,8 @@ impl RoomApiState {
             }
             room_id = RoomId::random();
         }
+
+        rooms.insert(room_id.clone(), Default::default());
 
         room_id
     }
