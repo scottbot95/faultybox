@@ -1,4 +1,4 @@
-mod app;
+pub(crate) mod app;
 mod pages;
 
 fn main() {

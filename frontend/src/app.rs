@@ -5,20 +5,34 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::pages::GeckoPage;
+use crate::pages::index::IndexPage;
+use crate::pages::room::{RoomCreatePage, RoomJoinPage, RoomLobbyPage};
 
 #[derive(Clone, Routable, PartialEq)]
-enum Route {
+pub enum Route {
     #[at("/")]
     Home,
 
     #[at("/gecko")]
     Gecko,
+
+    #[at("/create")]
+    Create,
+
+    #[at("/join")]
+    Join,
+
+    #[at("/lobby")]
+    Lobby,
 }
 
 fn switch(routes: Route) -> Html {
     match routes {
-        Route::Home => html! { <Redirect<Route> to={Route::Gecko}/>},
+        Route::Home => html! { <IndexPage /> },
         Route::Gecko => html! { <GeckoPage /> },
+        Route::Create => html! { <RoomCreatePage /> },
+        Route::Join => html! { <RoomJoinPage /> },
+        Route::Lobby => html! { <RoomLobbyPage /> },
     }
 }
 
