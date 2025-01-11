@@ -1,6 +1,15 @@
-$rowHeaderSize: 4em;
-$textColor: #51ACA3;
-$checkerColor: #59A69C;
+// only required if you are using the icons-far or icons-fab feature
+$fa-font-path: "webfonts";
+@import "../node_modules/@fortawesome/fontawesome-free/scss/fontawesome";
+@import "../node_modules/@fortawesome/fontawesome-free/scss/brands";
+
+// PatternFly styles
+@import "../node_modules/@patternfly/patternfly/patternfly.scss";
+@import "../node_modules/@patternfly/patternfly/patternfly-addons.scss";
+
+$geckoRowHeaderSize: 4em;
+$geckoTextColor: #51ACA3;
+$geckoCheckerColor: #59A69C;
 
 h1 {
     font-size: large;
@@ -15,9 +24,9 @@ h1 {
         table-layout: fixed;
 
         h1 {
-            color: $textColor;
+            color: $geckoTextColor;
             font-weight: bold;
-            font-size: $rowHeaderSize;
+            font-size: $geckoRowHeaderSize;
             text-align: center;
         }
 
@@ -32,8 +41,8 @@ h1 {
         }
 
         th {
-            color: $textColor;
-            font-size: $rowHeaderSize;
+            color: $geckoTextColor;
+            font-size: $geckoRowHeaderSize;
             text-align: center;
         }
 
@@ -45,12 +54,12 @@ h1 {
 
         tbody tr:nth-child(odd) td:nth-child(even),
         tbody tr:nth-child(even) td:nth-child(odd):not(:first-child) {
-            background-color: $checkerColor;
+            background-color: $geckoCheckerColor;
         }
 
         td:first-child {
             font-weight: bold;
-            color: $textColor;
+            color: $geckoTextColor;
             // background-color: transparent !important;
             font-size: 4em;
             padding-right: 15px;

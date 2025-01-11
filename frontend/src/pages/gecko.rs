@@ -30,12 +30,16 @@ pub fn page() -> Html {
     html! {
       <div class="Gecko">
         <Grid>
+          <GridItem cols={[2]} />
           <GridItem cols={[8]}>
             { topic_card }
-            </GridItem>
-            <GridItem cols={[4]}>
+          </GridItem>
+          <GridItem cols={[2]} />
+          <GridItem cols={[5]} />
+          <GridItem cols={[2]}>
               <button onclick={new_topic}>{"New topic"}</button>
           </GridItem>
+          <GridItem cols={[5]} />
         </Grid>
       </div>
     }
