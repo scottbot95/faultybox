@@ -15,7 +15,7 @@ rand.workspace = true
 
 # axum suck at <0.8 until axum-typed-websockets is updated (or we write our own)
 axum = {version = "0.8.1", features = [ "macros", "ws" ] }
-axum-extra = { version = "0.10.0", features = ["typed-header"] }
+axum-extra = { version = "0.10.0", features = ["typed-header", "cookie"] }
 clap = { version = "4.5", features = ["derive"] }
 futures = "0.3"
 headers = "0.4.0"

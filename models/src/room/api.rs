@@ -8,6 +8,4 @@ pub struct Claims {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JoinRoomOutput {
-    pub token: String,
-}
+pub struct JoinRoomOutput {}

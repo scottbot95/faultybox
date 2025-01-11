@@ -4,6 +4,7 @@ use axum::http::request::Parts;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::{Json, RequestPartsExt};
 use axum::response::{IntoResponse, Response};
+use axum_extra::extract::CookieJar;
 use axum_extra::typed_header::TypedHeaderRejection;
 use axum_extra::TypedHeader;
 use headers::{Error, Header};
@@ -45,24 +46,33 @@ where
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // extract the token from the header
-        let TypedHeader(RoomTokenHeader(token)) = parts
-            .extract()
+        // extract the token from cookies
+        let jar = parts.extract::<CookieJar>()
             .await
-            .map_err(|err: TypedHeaderRejection| 
-                if err.is_missing() {
-                    tracing::debug!("Request missing room token");
-                    AuthError::MissingToken
-                } else {
-                    tracing::debug!("Request had invalid room token: {:?}", err);
-                    AuthError::InvalidToken
-                })?;
+            .map_err(|_| AuthError::MissingToken)?;
+        
+        let token = jar.get("room_token")
+            .ok_or(AuthError::MissingToken)?
+            .value();
+        
+        // extract the token from the header
+        // let TypedHeader(RoomTokenHeader(token)) = parts
+        //     .extract()
+        //     .await
+        //     .map_err(|err: TypedHeaderRejection| 
+        //         if err.is_missing() {
+        //             tracing::debug!("Request missing room token");
+        //             AuthError::MissingToken
+        //         } else {
+        //             tracing::debug!("Request had invalid room token: {:?}", err);
+        //             AuthError::InvalidToken
+        //         })?;
 
         // decode the token
         let mut validator = Validation::default();
         validator.validate_exp = false;
         validator.required_spec_claims.remove("exp");
-        let token_data = decode::<Claims>(&token, &KEYS.decoding, &validator)
+        let token_data = decode::<Claims>(token, &KEYS.decoding, &validator)
             .map_err(|err| {
                 tracing::debug!("Failed to decode token: {}", err);
                 AuthError::InvalidToken

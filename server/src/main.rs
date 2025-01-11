@@ -24,7 +24,7 @@ struct Opt {
     log_level: String,
 
     /// Set the listen address
-    #[clap(short = 'a', long = "addr", default_value = "::1")]
+    #[clap(short = 'a', long = "addr", default_value = "0.0.0.0")]
     addr: String,
 
     /// Set the listen port
