@@ -36,6 +36,7 @@ pub async fn join_room(
 
     let token = create_token(&claims)?;
     let cookie = Cookie::build(("room_token", token))
+        .path("/")
         .http_only(true)
         .build();
 
