@@ -139,7 +139,7 @@ impl SocketHandler {
 
         match msg {
             ServerMsg::RoomJoined(room_id, room) => {
-                dispatcher.dispatch(RoomAction::Join(room_id, room.game));
+                self.dispatcher.dispatch(RoomAction::Join(room_id, room.game));
             }
         }
 
