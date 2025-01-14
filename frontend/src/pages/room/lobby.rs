@@ -1,9 +1,11 @@
 use std::{error::Error, rc::Rc};
 
-use futures::StreamExt;
+use futures::{channel::oneshot::{Receiver, Sender}, FutureExt, StreamExt, TryFutureExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use models::{room::RoomId, ws::ServerMsg, GameKind};
 use yew::{platform::spawn_local, prelude::*};
+use futures::future::select;
+use futures::future::Either;
 
 use crate::api_client::{use_api, ApiClient, ApiClientImpl};
 
@@ -17,7 +19,12 @@ pub fn page() -> Html {
         let room_state = room_state.clone();
         use_effect_with((), move |_| {
             let ws = client.connect_room().expect("Unable to connect to room");
-            spawn_local(handle_socket(ws, room_state.dispatcher()));
+            // spawn_local(handle_socket(ws, room_state.dispatcher()));
+            let handler = SocketHandler { 
+                dispatcher: room_state.dispatcher()
+            };
+
+            handler.spawn(ws)
         });
     }
 
@@ -77,40 +84,75 @@ impl Reducible for RoomState {
     }
 }
 
-async fn handle_socket(ws: WebSocket, dispatcher: UseReducerDispatcher<RoomState>) {
-    let (mut write, mut read) = ws.split();
-
-    while let Some(msg) = read.next().await {
-        let server_msg = match msg {
-            Ok(Message::Text(text)) => {
-                log::debug!("WebSocket Received Text: {}", text);
-                serde_json::from_str::<ServerMsg>(&text)
-            }
-            Ok(Message::Bytes(bytes)) => {
-                log::debug!("WebSocket Received Bytes: {:?} (\"{}\")", &bytes, String::from_utf8_lossy(&bytes));
-                serde_json::from_slice(&bytes)
-            }
-            Err(e) => {
-                log::error!("Error: {:?}", e);
-                break;
-            }
-        };
-        if let Ok(msg) = server_msg {
-            handle_msg(msg, dispatcher.clone()).await;
-        }
-    }
-
-    log::info!("Socket closed");
+struct SocketHandler {
+    dispatcher: UseReducerDispatcher<RoomState>,
 }
 
-async fn handle_msg(msg: ServerMsg, dispatcher: UseReducerDispatcher<RoomState>) -> Result<(), Box<dyn Error>> {
-    log::info!("Server message: {:?}", msg);
-
-    match msg {
-        ServerMsg::RoomJoined(room_id, room) => {
-            dispatcher.dispatch(RoomAction::Join(room_id, room.game));
-        }
+impl SocketHandler {
+    fn spawn(self, ws: WebSocket) -> SocketTearDown {
+        let (send, recv) = futures::channel::oneshot::channel();
+        spawn_local(async move {
+            self.handle_socket(ws, recv).await;
+        });
+        SocketTearDown { send }
     }
 
-    Ok(())
+    async fn handle_socket(self, ws: WebSocket, recv: Receiver<()>) {
+        let (mut write, mut read) = ws.split();
+        let recv = recv.into_future().shared();
+        loop {
+            let next_msg = select(read.next(), recv.clone()).await;
+            match next_msg {
+                Either::Left((Some(msg), _)) => {
+                    let server_msg = match msg {
+                        Ok(Message::Text(text)) => {
+                            log::debug!("WebSocket Received Text: {}", text);
+                            serde_json::from_str::<ServerMsg>(&text)
+                        }
+                        Ok(Message::Bytes(bytes)) => {
+                            log::debug!("WebSocket Received Bytes: {:?} (\"{}\")", &bytes, String::from_utf8_lossy(&bytes));
+                            serde_json::from_slice(&bytes)
+                        }
+                        Err(e) => {
+                            log::error!("Error: {:?}", e);
+                            break;
+                        }
+                    };
+                    if let Ok(msg) = server_msg {
+                        self.handle_msg(msg).await;
+                        // Self::handle_msg(msg, &self.dispatcher).await;
+                    }
+                }
+                Either::Right((Ok(_), _)) => {
+                    // Handle the recv stream event
+                    break;
+                }
+                _ => break,
+            }
+        }
+
+        log::info!("Socket closed");
+    }
+
+    async fn handle_msg(&self, msg: ServerMsg) -> Result<(), Box<dyn Error>> {
+        log::info!("Server message: {:?}", msg);
+
+        match msg {
+            ServerMsg::RoomJoined(room_id, room) => {
+                dispatcher.dispatch(RoomAction::Join(room_id, room.game));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct SocketTearDown {
+    send: Sender<()>,
+}
+
+impl TearDown for SocketTearDown {
+    fn tear_down(self) {
+        self.send.send(());
+    }
 }

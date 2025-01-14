@@ -19,6 +19,12 @@ pub enum GameKind {
     Gecko,
 }
 
+impl GameKind {
+    pub fn values() -> &'static [GameKind] {
+        &[GameKind::Gecko]
+    }
+}
+
 impl Display for GameKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

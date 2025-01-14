@@ -1,8 +1,8 @@
 use yew::prelude::*;
-use patternfly_yew::{components::nav, prelude::*};
+use patternfly_yew::prelude::*;
 use yew::platform::spawn_local;
 use models::GameKind;
-use yew_router::{hooks::use_navigator, AnyRoute};
+use yew_router::hooks::use_navigator;
 use crate::{api_client::{use_api, ApiClient, ApiClientImpl}, app::Route};
 
 turf::style_sheet!("src/pages/room/create.scss");
@@ -29,14 +29,14 @@ pub fn page() -> Html {
         })
     };
     html! {
-        <div /*class={ClassName::PAGE}*/>
+        <div class={ClassName::PAGE}>
             <style>{STYLE_SHEET}</style>
             <span>
                 {"Game:"}
                 <SimpleSelect<GameKind>
                     placeholder = "Choose a game"
                     selected={*selected}
-                    entries={vec![GameKind::Gecko]}
+                    entries={GameKind::values().to_vec()}
                     {onselect}
                 />
             </span>
