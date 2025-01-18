@@ -5,8 +5,6 @@ use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::{Json, RequestPartsExt};
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
-use axum_extra::typed_header::TypedHeaderRejection;
-use axum_extra::TypedHeader;
 use headers::{Error, Header};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Validation};
 use serde_json::json;
@@ -109,14 +107,16 @@ pub enum AuthError {
     TokenCreation,
     InvalidToken,
     MissingToken,
+    NotFound(String),
 }
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AuthError::TokenCreation => (StatusCode::INTERNAL_SERVER_ERROR, "Token creation error"),
-            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
-            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing token"),
+            AuthError::TokenCreation => (StatusCode::INTERNAL_SERVER_ERROR, "Token creation error".to_owned()),
+            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token".to_owned()),
+            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing token".to_owned()),
+            AuthError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
         };
         let body = Json(json!({
             "error": error_message,

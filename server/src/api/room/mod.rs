@@ -1,16 +1,19 @@
+mod auth;
 mod create;
 mod join;
-mod auth;
 mod socket;
 
 use crate::AppState;
 use axum::extract::FromRef;
 use axum::routing::{any, get, post};
 use axum::Router;
+use models::room::api::ClientId;
 use models::room::{Room, RoomId};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
 type ArcLock<T> = Arc<RwLock<T>>;
 
 #[derive(Clone, Default)]
@@ -20,17 +23,20 @@ pub(crate) struct RoomApiState {
     rooms: ArcLock<HashMap<RoomId, ArcLock<Option<RoomState>>>>,
 }
 
-#[derive(Clone, Debug)]
+pub type CloseClientFn = Box<dyn Fn() + Send + Sync>;
+
+#[derive(Clone)]
 pub struct RoomState {
     room: Room,
-    clients: HashSet<ClientId>,
+    clients: HashMap<ClientId, Option<Arc<CloseClientFn>>>,
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub struct ClientId(pub String);
-
-impl AsRef<String> for ClientId {
-    fn as_ref(&self) -> &String { &self.0 }
+impl Debug for RoomState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RoomState")
+            .field("room", &self.room)
+            .finish()
+    }
 }
 
 impl FromRef<AppState> for RoomApiState {
