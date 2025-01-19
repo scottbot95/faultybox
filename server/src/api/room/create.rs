@@ -15,22 +15,9 @@ pub async fn create_room(
     jar: CookieJar,
     State(state): State<RoomApiState>,
 ) -> Result<(CookieJar, Json<JoinRoomOutput>), AuthError> {
-    let room_id = state.acquire_id().await;
-    let room = RoomState {
-        room: Room {
-            game: game_kind,
-        },
-        clients: Default::default(),
-    };
-    {
-        let rooms = state.rooms.read().await;
-        if let Some(room_state) = rooms.get(&room_id) {
-            tracing::trace!("Created room {}: {:?}", room_id, room);
-            *room_state.write().await = Some(room);
-        } else {
-            tracing::error!("Acquired room ID didn't create a room");
-        }
-    }
+    let room_id = state.insert_room(Room {
+        game: game_kind,
+    }).await;
 
     join::join_room(Path(room_id), jar, State(state)).await
 }

@@ -7,4 +7,11 @@ pub enum ServerMsg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ClientMsg {}
+pub enum ClientMsg {
+    Gecko(GeckoClientMsg)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum GeckoClientMsg {
+
+}

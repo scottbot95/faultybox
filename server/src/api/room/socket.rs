@@ -1,14 +1,13 @@
 use crate::api::room::auth::RoomToken;
-use crate::api::room::{CloseClientFn, ArcLock, RoomApiState, RoomState};
+use crate::api::room::{ArcLock, RoomApiState, RoomState, ClientState};
 use crate::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use futures::stream::SplitStream;
 use futures::{SinkExt, StreamExt};
-use models::room::api::Claims;
+use models::room::api::{Claims, ClientId};
 use models::ws::{ClientMsg, ServerMsg};
-use std::sync::Arc;
 use tokio::spawn;
 
 pub async fn connect(
@@ -24,10 +23,8 @@ pub async fn connect(
         .ok_or_else(|| StatusCode::FORBIDDEN.into_response())?
         .clone();
 
-    if let Some(room) = room.read().await.as_ref() {
-        if !room.clients.contains_key(&claims.sub) {
-            return Ok((StatusCode::FORBIDDEN, "Invalid token").into_response());
-        }
+    if !room.clients.read().await.contains_key(&claims.sub) {
+        return Ok((StatusCode::FORBIDDEN, "Invalid token").into_response());
     }
 
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, claims, room)))
@@ -36,46 +33,71 @@ pub async fn connect(
 async fn handle_socket(
     socket: WebSocket<ServerMsg, ClientMsg>,
     claims: Claims,
-    room: ArcLock<Option<RoomState>>,
+    state: RoomState,
 ) {
     let room_id = claims.room_id;
-    tracing::trace!("Client {} connected to room {}", &claims.sub, room_id);
+    let client_id = claims.sub;
+    tracing::trace!("Client {} connected to room {}", &client_id, room_id);
 
     let (mut send, recv) = socket.split();
 
-    if let Some(state) = room.read().await.as_ref() {
-        send.send(Message::Item(ServerMsg::RoomJoined(
-            room_id,
-            state.room.clone(),
-        )))
-        .await
-        .expect("Failed to send room joined");
+    let result = send.send(Message::Item(ServerMsg::RoomJoined(
+        room_id,
+        state.room.read().await.clone(),
+    )))
+    .await;
+    if let Err(e) = result {
+        tracing::error!("Error sending message: {}", e);
+        return;
     }
+    let mut broadcast_rx = state.client_broadcast.subscribe();
 
-    fn make_abort<F: Fn() +Send+Sync + 'static>(f: F) -> Arc<CloseClientFn> {
-        Arc::new(Box::new(f))
-    }
-    let abort_fn = {
-        let sub = claims.sub.clone();
-        let handle = spawn(read_client(recv));
-        make_abort(move || {
-            handle.abort();
-            tracing::trace!("Closing client {}", sub);
+    let (control_tx, mut control_rx) = tokio::sync::mpsc::channel(16);
+    let broadcast_task = {
+        let client_id = client_id.clone();
+        spawn(async move {
+            while let Ok(msg) = broadcast_rx.recv().await {
+                let result = send.send(Message::Item(msg)).await;
+                if let Err(e) = result {
+                    tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                }
+            }
         })
     };
-    if let Some(state) = &mut *room.write().await {
-        let prev = state
-            .clients
-            .insert(claims.sub.clone(), Some(abort_fn));
 
-        if let Some(prev) = prev.flatten() {
-            tracing::info!("Client {} reconnected", claims.sub);
-            (*prev)();
+    let prev = state
+        .clients
+        .write().await
+        .insert(client_id.clone(), Some(ClientState {
+            sender: state.client_broadcast.clone(),
+            control: control_tx,
+        }));
+
+    if let Some(prev) = prev.flatten() {
+        tracing::info!("Client {} reconnected", client_id);
+        let _ = prev.control.send(()).await;
+    }
+
+    // Listen for client messages
+    tokio::select! {
+        _ = read_client(client_id.clone(), recv, state.client_messages.clone()) => {
+            tracing::trace!("Client {} closed connection", client_id)
+        }
+        _ = control_rx.recv() => {
+            tracing::trace!("Closed old client {} connection", client_id)
         }
     }
+
+    // Client socket closed, cleanup the broadcast task
+    broadcast_task.abort();
+    let _ = broadcast_task.await;
 }
 
-async fn read_client(mut recv: SplitStream<WebSocket<ServerMsg, ClientMsg>>) {
+async fn read_client(
+    client_id: ClientId,
+    mut recv: SplitStream<WebSocket<ServerMsg, ClientMsg>>,
+    sender: tokio::sync::mpsc::Sender<(ClientId, ClientMsg)>
+) {
     while let Some(msg) = recv.next().await {
         let msg = match msg {
             Ok(Message::Item(msg)) => msg,
@@ -87,5 +109,6 @@ async fn read_client(mut recv: SplitStream<WebSocket<ServerMsg, ClientMsg>>) {
         };
 
         tracing::trace!("Message received: {:?}", msg);
+        sender.send((client_id.clone(), msg)).await.ok();
     }
 }

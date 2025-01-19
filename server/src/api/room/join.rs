@@ -12,7 +12,7 @@ use jsonwebtoken::encode;
 use rand::Rng;
 use models::room::api::{Claims, JoinRoomOutput};
 use models::room::RoomId;
-use crate::api::room::{ClientId, CloseClientFn, RoomApiState};
+use crate::api::room::{ClientId, RoomApiState};
 use crate::api::room::auth::{create_token, AuthError};
 
 pub async fn join_room(
@@ -20,7 +20,7 @@ pub async fn join_room(
     jar: CookieJar,
     State(state): State<RoomApiState>,
 ) -> Result<(CookieJar, Json<JoinRoomOutput>),AuthError> {
-    let room = state.rooms.read().await
+    let state = state.rooms.read().await
         .get(&room_id)
         .ok_or_else(|| AuthError::NotFound(format!("Room {} not found", room_id)))?
         .clone();
@@ -32,19 +32,14 @@ pub async fn join_room(
         .collect::<String>()
         .into();
 
-    if let Some(state) = room.write().await.as_mut() {
-        match state.clients.entry(client_id.clone()) {
-            Entry::Occupied(_) => {
-                tracing::error!("Client {} already used", &client_id);
-                return Err(AuthError::TokenCreation);
-            }
-            Entry::Vacant(e) => {
-                e.insert(None);
-            }
+    match state.clients.write().await.entry(client_id.clone()) {
+        Entry::Occupied(_) => {
+            tracing::error!("Client {} already used", &client_id);
+            return Err(AuthError::TokenCreation);
         }
-    } else {
-        tracing::error!("Attempted to join non-existent room {}", &room_id);
-        return Err(AuthError::NotFound(format!("Room {} does not exist", &room_id)));
+        Entry::Vacant(e) => {
+            e.insert(None);
+        }
     }
 
     let claims = Claims {
