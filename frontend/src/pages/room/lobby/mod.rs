@@ -72,7 +72,7 @@ impl SocketHandler {
     }
 
     async fn handle_socket(self, ws: WebSocket, mut control_rx: Receiver<()>) {
-        let (mut write, mut read) = ws.split();
+        let (write, mut read) = ws.split();
         let mut fut = pin!(async move {
             while let Some(msg) = read.next().await {
                 let server_msg = match msg {

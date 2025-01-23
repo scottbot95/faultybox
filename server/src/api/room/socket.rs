@@ -1,5 +1,5 @@
 use crate::api::room::auth::RoomToken;
-use crate::api::room::{ArcLock, RoomApiState, RoomState, ClientState};
+use crate::api::room::{ClientState, RoomApiState, RoomState};
 use crate::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -31,22 +31,20 @@ pub async fn connect(
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, claims, room)))
 }
 
-async fn handle_socket(
-    socket: WebSocket<ServerMsg, ClientMsg>,
-    claims: Claims,
-    state: RoomState,
-) {
+async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, state: RoomState) {
     let room_id = claims.room_id;
     let client_id = claims.sub;
     tracing::trace!("Client {} connected to room {}", &client_id, room_id);
 
     let (mut send, recv) = socket.split();
-    
+
     let mut broadcast_rx = state.client_broadcast.subscribe();
     {
         let room = state.room.read().await.clone();
         let msg = ServerMsg::RoomUpdate(room);
-        state.client_broadcast.send(msg)
+        state
+            .client_broadcast
+            .send(msg)
             .expect("No receivers on room broadcast channel");
     }
 
@@ -74,13 +72,13 @@ async fn handle_socket(
         })
     };
 
-    let prev = state
-        .clients
-        .write().await
-        .insert(client_id.clone(), Some(ClientState {
+    let prev = state.clients.write().await.insert(
+        client_id.clone(),
+        Some(ClientState {
             sender: state.client_broadcast.clone(),
             control: control_tx,
-        }));
+        }),
+    );
 
     if let Some(prev) = prev.flatten() {
         tracing::info!("Client {} reconnected", client_id);
@@ -105,7 +103,7 @@ async fn handle_socket(
 async fn read_client(
     client_id: ClientId,
     mut recv: SplitStream<WebSocket<ServerMsg, ClientMsg>>,
-    sender: tokio::sync::mpsc::Sender<(ClientId, ClientMsg)>
+    sender: tokio::sync::mpsc::Sender<(ClientId, ClientMsg)>,
 ) {
     while let Some(msg) = recv.next().await {
         let msg = match msg {

@@ -1,4 +1,4 @@
-use crate::room::{Room, RoomId};
+use crate::room::Room;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -9,10 +9,8 @@ pub enum ServerMsg {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMsg {
     SetNickname(String),
-    Gecko(GeckoClientMsg)
+    Gecko(GeckoClientMsg),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum GeckoClientMsg {
-
-}
+pub enum GeckoClientMsg {}

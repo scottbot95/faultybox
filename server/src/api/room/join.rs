@@ -1,27 +1,35 @@
-use std::collections::hash_map::Entry;
+use crate::api::room::auth::{create_token, AuthError};
+use crate::api::room::{ClientId, RoomApiState, RoomState};
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
 use models::room::api::{Claims, JoinRoomOutput};
 use models::room::{RoomId, RoomMember};
-use crate::api::room::{ClientId, RoomApiState, RoomState};
-use crate::api::room::auth::{create_token, AuthError};
+use std::collections::hash_map::Entry;
 
 /// /api/room/join/{room_id}
 pub async fn join_room(
     Path(room_id): Path<RoomId>,
     jar: CookieJar,
     State(state): State<RoomApiState>,
-) -> Result<(CookieJar, Json<JoinRoomOutput>),AuthError> {
-    let state = state.rooms.read().await
+) -> Result<(CookieJar, Json<JoinRoomOutput>), AuthError> {
+    let state = state
+        .rooms
+        .read()
+        .await
         .get(&room_id)
         .ok_or_else(|| AuthError::NotFound(format!("Room {} not found", room_id)))?
         .clone();
     join_room_impl(None, room_id, jar, state).await
 }
 
-pub async fn join_room_impl(given_client_id: Option<ClientId>, room_id: RoomId, jar: CookieJar, state: RoomState) -> Result<(CookieJar, Json<JoinRoomOutput>), AuthError> {
+pub async fn join_room_impl(
+    given_client_id: Option<ClientId>,
+    room_id: RoomId,
+    jar: CookieJar,
+    state: RoomState,
+) -> Result<(CookieJar, Json<JoinRoomOutput>), AuthError> {
     let assert_new_client = given_client_id.is_none();
     let client_id = given_client_id.unwrap_or_else(ClientId::random);
     match state.clients.write().await.entry(client_id.clone()) {
@@ -61,11 +69,5 @@ pub async fn join_room_impl(given_client_id: Option<ClientId>, room_id: RoomId, 
         .build();
 
     let room = state.room.read().await.clone();
-    Ok((
-        jar.add(cookie),
-        Json(JoinRoomOutput {
-            room_id,
-            room
-        })
-    ))
+    Ok((jar.add(cookie), Json(JoinRoomOutput { room_id, room })))
 }

@@ -1,10 +1,9 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
-use models::room::Room;
 use crate::api_client::{ApiClientContext, ApiClientImpl};
 use crate::pages::GeckoPage;
 use crate::pages::index::IndexPage;
-use crate::pages::room::{RoomCreatePage, RoomJoinPage, RoomLobbyPage};
+use crate::pages::room::{RoomCreatePage, RoomJoinPage};
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {

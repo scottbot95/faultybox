@@ -1,10 +1,10 @@
 pub mod api;
 
-use std::collections::HashMap;
+use crate::room::api::ClientId;
+use crate::GameKind;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use crate::GameKind;
-use crate::room::api::ClientId;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct RoomId(pub String);

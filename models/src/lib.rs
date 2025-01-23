@@ -1,8 +1,8 @@
 pub mod room;
 pub mod ws;
 
-use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 pub const TOPIC_GRID_ROWS: usize = 4;
 pub const TOPIC_GRID_COLS: usize = 4;

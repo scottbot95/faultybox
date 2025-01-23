@@ -1,10 +1,10 @@
+use crate::api::room::auth::AuthError;
+use crate::api::room::{join, RoomApiState};
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::CookieJar;
-use models::GameKind;
 use models::room::api::JoinRoomOutput;
-use crate::api::room::{join, RoomApiState};
-use crate::api::room::auth::AuthError;
+use models::GameKind;
 
 /// /api/room/create/{gameKind}
 pub async fn create_room(

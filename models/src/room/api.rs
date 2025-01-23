@@ -1,5 +1,5 @@
-use rand::Rng;
 use crate::room::{Room, RoomId};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -43,5 +43,5 @@ pub struct Claims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JoinRoomOutput {
     pub room_id: RoomId,
-    pub room: Room
+    pub room: Room,
 }

@@ -1,4 +1,4 @@
-use models::room::{Room, RoomId};
+use models::room::RoomId;
 use patternfly_yew::prelude::*;
 use yew::{platform::spawn_local, prelude::*};
 

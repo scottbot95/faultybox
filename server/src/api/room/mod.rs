@@ -3,22 +3,22 @@ mod create;
 mod join;
 mod socket;
 
-use std::collections::hash_map::Entry;
-use std::collections::hash_map::Entry::Occupied;
+use crate::api::room::auth::AuthError;
 use crate::AppState;
 use axum::extract::FromRef;
 use axum::routing::{any, get, post};
 use axum::Router;
 use models::room::api::ClientId;
 use models::room::{Room, RoomId, RoomMember};
+use models::ws::{ClientMsg, ServerMsg};
+use models::GameKind;
+use std::collections::hash_map::Entry;
+use std::collections::hash_map::Entry::Occupied;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::RwLock;
-use models::GameKind;
-use models::ws::{ClientMsg, ServerMsg};
-use crate::api::room::auth::AuthError;
 
 type ArcLock<T> = Arc<RwLock<T>>;
 
@@ -67,9 +67,7 @@ impl RoomState {
         while let Some((client_id, msg)) = rx.recv().await {
             let dirty = match msg {
                 ClientMsg::SetNickname(name) => {
-                    if let Some(m) = self.room.write().await
-                        .members
-                        .get_mut(&client_id) {
+                    if let Some(m) = self.room.write().await.members.get_mut(&client_id) {
                         m.nickname = Some(name);
                     }
                     true
@@ -111,7 +109,7 @@ impl RoomApiState {
             game: game_kind,
             members: HashMap::from([
                 // include the leader
-                (leader.clone(), RoomMember::new(leader.clone()))
+                (leader.clone(), RoomMember::new(leader.clone())),
             ]),
             leader,
         };

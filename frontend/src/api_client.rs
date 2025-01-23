@@ -1,8 +1,7 @@
-use std::fmt::format;
 use std::rc::Rc;
 use gloo_net::http::Request;
 use gloo_net::websocket::futures::WebSocket;
-use wasm_bindgen::{JsError, JsValue};
+use wasm_bindgen::JsValue;
 use web_sys::window;
 use yew::{hook, use_context};
 use models::GameKind;

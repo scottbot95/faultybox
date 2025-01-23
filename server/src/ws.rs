@@ -1,34 +1,35 @@
+use axum::body::Bytes;
+use axum::extract::ws::{DefaultOnFailedUpgrade, OnFailedUpgrade};
+use axum::extract::{ws, FromRequestParts};
+use axum::http::request::Parts;
+use axum::response::Response;
+use futures::Stream;
 use futures::{Sink, SinkExt, StreamExt};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use axum::body::Bytes;
-use axum::extract::{ws, FromRequestParts};
-use axum::extract::ws::{DefaultOnFailedUpgrade, OnFailedUpgrade};
-use axum::http::request::Parts;
-use axum::response::{IntoResponse, Response};
-use futures::Stream;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 // use serde_json::Error;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
-pub struct WebSocketUpgrade<S, R, F=DefaultOnFailedUpgrade> {
+pub struct WebSocketUpgrade<S, R, F = DefaultOnFailedUpgrade> {
     upgrade: ws::WebSocketUpgrade<F>,
     _marker: PhantomData<fn() -> (S, R, F)>,
 }
 
 impl<S, R, B> FromRequestParts<B> for WebSocketUpgrade<S, R>
 where
-    B: Send + Sync
+    B: Send + Sync,
 {
     type Rejection = <ws::WebSocketUpgrade as FromRequestParts<B>>::Rejection;
 
     async fn from_request_parts(parts: &mut Parts, state: &B) -> Result<Self, Self::Rejection> {
-        let upgrade = <ws::WebSocketUpgrade as FromRequestParts<B>>::from_request_parts(parts, state).await?;
+        let upgrade =
+            <ws::WebSocketUpgrade as FromRequestParts<B>>::from_request_parts(parts, state).await?;
         Ok(Self {
             upgrade,
             _marker: PhantomData,
@@ -48,15 +49,13 @@ impl<S, R, F: OnFailedUpgrade> WebSocketUpgrade<S, R, F> {
         S: Send,
         R: Send,
     {
-
-        self.upgrade
-            .on_upgrade(|socket| async move {
-                let socket = WebSocket {
-                    socket,
-                    _marker: PhantomData,
-                };
-                callback(socket).await
-            })
+        self.upgrade.on_upgrade(|socket| async move {
+            let socket = WebSocket {
+                socket,
+                _marker: PhantomData,
+            };
+            callback(socket).await
+        })
     }
 
     pub fn on_failed_upgrade<C>(self, callback: C) -> WebSocketUpgrade<S, R, C>
@@ -65,9 +64,7 @@ impl<S, R, F: OnFailedUpgrade> WebSocketUpgrade<S, R, F> {
         S: Send,
         R: Send,
     {
-
-        let upgrade = self.upgrade
-            .on_failed_upgrade(callback);
+        let upgrade = self.upgrade.on_failed_upgrade(callback);
         WebSocketUpgrade {
             upgrade,
             _marker: PhantomData,
@@ -144,8 +141,7 @@ where
     type Item = Result<Message<R>, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let msg = futures::ready!(Pin::new(&mut self.socket)
-            .poll_next(cx)?);
+        let msg = futures::ready!(Pin::new(&mut self.socket).poll_next(cx)?);
 
         if let Some(msg) = msg {
             let msg = match msg {
@@ -179,7 +175,9 @@ where
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.socket).poll_ready(cx).map_err(From::from)
+        Pin::new(&mut self.socket)
+            .poll_ready(cx)
+            .map_err(From::from)
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Message<S>) -> Result<(), Self::Error> {
@@ -197,11 +195,15 @@ where
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.socket).poll_flush(cx).map_err(From::from)
+        Pin::new(&mut self.socket)
+            .poll_flush(cx)
+            .map_err(From::from)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.socket).poll_close(cx).map_err(From::from)
+        Pin::new(&mut self.socket)
+            .poll_close(cx)
+            .map_err(From::from)
     }
 }
 

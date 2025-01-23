@@ -2,8 +2,7 @@ use yew::prelude::*;
 use patternfly_yew::prelude::*;
 use yew::platform::spawn_local;
 use models::GameKind;
-use yew_router::hooks::use_navigator;
-use crate::{api_client::{use_api, ApiClient, ApiClientImpl}, app::Route};
+use crate::api_client::{use_api, ApiClient, ApiClientImpl};
 use crate::pages::room::RoomLobbyPage;
 
 turf::style_sheet!("src/pages/room/create.scss");
