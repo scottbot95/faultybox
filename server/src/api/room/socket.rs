@@ -9,6 +9,7 @@ use futures::{SinkExt, StreamExt};
 use models::room::api::{Claims, ClientId};
 use models::ws::{ClientMsg, ServerMsg};
 use tokio::spawn;
+use tokio::sync::broadcast::error::RecvError;
 
 pub async fn connect(
     RoomToken(claims): RoomToken,
@@ -40,26 +41,34 @@ async fn handle_socket(
     tracing::trace!("Client {} connected to room {}", &client_id, room_id);
 
     let (mut send, recv) = socket.split();
-
-    let result = send.send(Message::Item(ServerMsg::RoomJoined(
-        room_id,
-        state.room.read().await.clone(),
-    )))
-    .await;
-    if let Err(e) = result {
-        tracing::error!("Error sending message: {}", e);
-        return;
-    }
+    
     let mut broadcast_rx = state.client_broadcast.subscribe();
+    {
+        let room = state.room.read().await.clone();
+        let msg = ServerMsg::RoomUpdate(room);
+        state.client_broadcast.send(msg)
+            .expect("No receivers on room broadcast channel");
+    }
 
     let (control_tx, mut control_rx) = tokio::sync::mpsc::channel(16);
     let broadcast_task = {
         let client_id = client_id.clone();
         spawn(async move {
-            while let Ok(msg) = broadcast_rx.recv().await {
-                let result = send.send(Message::Item(msg)).await;
-                if let Err(e) = result {
-                    tracing::warn!("Error sending message to client {}: {}", client_id, e);
+            loop {
+                let next = broadcast_rx.recv().await;
+                match next {
+                    Ok(msg) => {
+                        let result = send.send(Message::Item(msg)).await;
+                        if let Err(e) = result {
+                            tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                        }
+                    }
+                    Err(RecvError::Lagged(n)) => {
+                        tracing::warn!("Broadcast for {} lagging. Missed {} message", client_id, n);
+                    }
+                    Err(RecvError::Closed) => {
+                        break;
+                    }
                 }
             }
         })

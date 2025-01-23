@@ -1,8 +1,20 @@
-use crate::room::RoomId;
+use rand::Rng;
+use crate::room::{Room, RoomId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ClientId(pub String);
+
+impl ClientId {
+    pub fn random() -> Self {
+        rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(12)
+            .map(char::from)
+            .collect::<String>()
+            .into()
+    }
+}
 
 impl std::fmt::Display for ClientId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -29,4 +41,7 @@ pub struct Claims {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JoinRoomOutput {}
+pub struct JoinRoomOutput {
+    pub room_id: RoomId,
+    pub room: Room
+}

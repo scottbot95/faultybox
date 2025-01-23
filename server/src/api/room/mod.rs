@@ -3,18 +3,22 @@ mod create;
 mod join;
 mod socket;
 
+use std::collections::hash_map::Entry;
+use std::collections::hash_map::Entry::Occupied;
 use crate::AppState;
 use axum::extract::FromRef;
 use axum::routing::{any, get, post};
 use axum::Router;
 use models::room::api::ClientId;
-use models::room::{Room, RoomId};
+use models::room::{Room, RoomId, RoomMember};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::spawn;
 use tokio::sync::RwLock;
+use models::GameKind;
 use models::ws::{ClientMsg, ServerMsg};
+use crate::api::room::auth::AuthError;
 
 type ArcLock<T> = Arc<RwLock<T>>;
 
@@ -61,10 +65,25 @@ impl RoomState {
 impl RoomState {
     async fn listen(self, mut rx: tokio::sync::mpsc::Receiver<(ClientId, ClientMsg)>) {
         while let Some((client_id, msg)) = rx.recv().await {
-            match msg {
+            let dirty = match msg {
+                ClientMsg::SetNickname(name) => {
+                    if let Some(m) = self.room.write().await
+                        .members
+                        .get_mut(&client_id) {
+                        m.nickname = Some(name);
+                    }
+                    true
+                }
                 ClientMsg::Gecko(_) => {
                     todo!()
                 }
+            };
+            if dirty {
+                let msg = ServerMsg::RoomUpdate(self.room.read().await.clone());
+                if self.client_broadcast.send(msg).is_err() {
+                    tracing::error!("Failed to send room update message");
+                    return;
+                };
             }
         }
     }
@@ -86,25 +105,46 @@ impl FromRef<AppState> for RoomApiState {
 }
 
 impl RoomApiState {
-    async fn insert_room(&self, room: Room) -> RoomId {
+    async fn create_room(&self, game_kind: GameKind) -> Result<(RoomId, RoomState), AuthError> {
+        let leader = ClientId::random();
+        let room = Room {
+            game: game_kind,
+            members: HashMap::from([
+                // include the leader
+                (leader.clone(), RoomMember::new(leader.clone()))
+            ]),
+            leader,
+        };
+
         let mut rooms = self.rooms.write().await;
         let mut room_id = RoomId::random();
         let mut attempts = 1;
 
         const MAX_ATTEMPTS: u8 = 10;
-
         while rooms.contains_key(&room_id) {
             attempts += 1;
             if attempts < MAX_ATTEMPTS {
-                panic!("Failed to acquire room ID in {} attempts", MAX_ATTEMPTS);
+                tracing::error!("Failed to acquire room ID in {} attempts", MAX_ATTEMPTS);
+                return Err(AuthError::TokenCreation);
             }
             room_id = RoomId::random();
         }
-
-        tracing::info!("Created room {}: {:?}", room_id, room);
-        rooms.insert(room_id.clone(), RoomState::new(room));
-
-        room_id
+        loop {
+            match rooms.entry(room_id.clone()) {
+                Occupied(_) => {
+                    attempts += 1;
+                    if attempts < MAX_ATTEMPTS {
+                        panic!("Failed to acquire room ID in {} attempts", MAX_ATTEMPTS);
+                    }
+                    room_id = RoomId::random();
+                }
+                Entry::Vacant(e) => {
+                    tracing::info!("Created room {}: {:?}", room_id, room);
+                    let state = e.insert(RoomState::new(room));
+                    return Ok((room_id, state.clone()));
+                }
+            }
+        }
     }
 }
 

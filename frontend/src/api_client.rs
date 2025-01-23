@@ -55,7 +55,7 @@ impl ApiClient for ApiClientImpl {
     }
 
     async fn join_room(&self, room_id: &RoomId) -> Result<JoinRoomOutput> {
-        let resp = Request::post(&format!("/api/room/join/{}", room_id))
+        let resp = Request::get(&format!("/api/room/join/{}", room_id))
             .send()
             .await?;
 

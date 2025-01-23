@@ -1,8 +1,6 @@
-use futures::StreamExt;
-use gloo_net::websocket::futures::WebSocket;
-use yew::platform::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use models::room::Room;
 use crate::api_client::{ApiClientContext, ApiClientImpl};
 use crate::pages::GeckoPage;
 use crate::pages::index::IndexPage;
@@ -22,8 +20,8 @@ pub enum Route {
     #[at("/join")]
     Join,
 
-    #[at("/lobby")]
-    Lobby,
+    // #[at("/lobby")]
+    // Lobby,
 }
 
 fn switch(routes: Route) -> Html {
@@ -32,7 +30,7 @@ fn switch(routes: Route) -> Html {
         Route::Gecko => html! { <GeckoPage /> },
         Route::Create => html! { <RoomCreatePage /> },
         Route::Join => html! { <RoomJoinPage /> },
-        Route::Lobby => html! { <RoomLobbyPage /> },
+        // Route::Lobby => html! { <RoomLobbyPage /> },
     }
 }
 

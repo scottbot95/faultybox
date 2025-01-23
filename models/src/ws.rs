@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMsg {
-    RoomJoined(RoomId, Room),
+    RoomUpdate(Room),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMsg {
+    SetNickname(String),
     Gecko(GeckoClientMsg)
 }
 

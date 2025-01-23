@@ -1,8 +1,10 @@
 pub mod api;
 
+use std::collections::HashMap;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use crate::GameKind;
+use crate::room::api::ClientId;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct RoomId(pub String);
@@ -27,7 +29,24 @@ impl RoomId {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Room {
     pub game: GameKind,
+    pub members: HashMap<ClientId, RoomMember>,
+    pub leader: ClientId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RoomMember {
+    pub client_id: ClientId,
+    pub nickname: Option<String>,
+}
+
+impl RoomMember {
+    pub fn new(client_id: ClientId) -> Self {
+        Self {
+            client_id,
+            nickname: None,
+        }
+    }
 }
