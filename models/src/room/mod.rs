@@ -31,6 +31,7 @@ impl RoomId {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Room {
+    pub id: RoomId,
     pub game: GameKind,
     pub members: HashMap<ClientId, RoomMember>,
     pub leader: ClientId,

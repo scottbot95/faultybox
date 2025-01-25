@@ -104,16 +104,6 @@ impl FromRef<AppState> for RoomApiState {
 
 impl RoomApiState {
     async fn create_room(&self, game_kind: GameKind) -> Result<(RoomId, RoomState), AuthError> {
-        let leader = ClientId::random();
-        let room = Room {
-            game: game_kind,
-            members: HashMap::from([
-                // include the leader
-                (leader.clone(), RoomMember::new(leader.clone())),
-            ]),
-            leader,
-        };
-
         let mut rooms = self.rooms.write().await;
         let mut room_id = RoomId::random();
         let mut attempts = 1;
@@ -127,6 +117,18 @@ impl RoomApiState {
             }
             room_id = RoomId::random();
         }
+
+        let leader = ClientId::random();
+        let room = Room {
+            id: room_id.clone(),
+            game: game_kind,
+            members: HashMap::from([
+                // include the leader
+                (leader.clone(), RoomMember::new(leader.clone())),
+            ]),
+            leader,
+        };
+
         loop {
             match rooms.entry(room_id.clone()) {
                 Occupied(_) => {

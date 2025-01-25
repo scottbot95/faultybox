@@ -2,8 +2,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 use crate::api_client::{ApiClientContext, ApiClientImpl};
 use crate::pages::GeckoPage;
-use crate::pages::index::IndexPage;
-use crate::pages::room::{RoomCreatePage, RoomJoinPage};
+use crate::pages::room::RoomPage;
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {
@@ -13,11 +12,8 @@ pub enum Route {
     #[at("/gecko")]
     Gecko,
 
-    #[at("/create")]
-    Create,
-
-    #[at("/join")]
-    Join,
+    #[at("/room")]
+    Room,
 
     // #[at("/lobby")]
     // Lobby,
@@ -25,11 +21,9 @@ pub enum Route {
 
 fn switch(routes: Route) -> Html {
     match routes {
-        Route::Home => html! { <IndexPage /> },
+        Route::Home => html! { <Redirect<Route> to={Route::Room} /> },
         Route::Gecko => html! { <GeckoPage /> },
-        Route::Create => html! { <RoomCreatePage /> },
-        Route::Join => html! { <RoomJoinPage /> },
-        // Route::Lobby => html! { <RoomLobbyPage /> },
+        Route::Room => html! { <RoomPage /> },
     }
 }
 
