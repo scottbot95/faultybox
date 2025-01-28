@@ -21,7 +21,7 @@ pub async fn connect(
         .read()
         .await
         .get(&claims.room_id)
-        .ok_or_else(|| StatusCode::FORBIDDEN.into_response())?
+        .ok_or_else(|| (StatusCode::FORBIDDEN, "Room has ended").into_response())?
         .clone();
 
     if !room.clients.read().await.contains_key(&claims.sub) {

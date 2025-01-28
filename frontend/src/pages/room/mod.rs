@@ -4,11 +4,13 @@ mod join;
 mod reducer;
 mod socket;
 
+use std::rc::Rc;
 use yew::prelude::*;
 
 pub use lobby::*;
 pub use create::*;
 pub use join::*;
+use models::room::Room;
 use crate::api_client::{use_api, ApiClient, ApiClientImpl};
 use crate::pages::room::reducer::RoomState;
 use crate::pages::room::socket::{Dispatcher, SocketHandler, SocketTearDown};
@@ -36,8 +38,11 @@ pub fn room_page() -> Html {
     }
 
     if let Some(room) = room_state.room.clone() {
+        let room = Rc::new(room);
         html! {
-            <RoomLobbyPage {room} />
+            <ContextProvider<Rc<Room>> context={room.clone()}>
+                <RoomLobbyPage {room} />
+            </ContextProvider<Rc<Room>>>
         }
     } else {
         match *join_kind {

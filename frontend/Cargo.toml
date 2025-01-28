@@ -10,8 +10,8 @@ models.workspace = true
 log.workspace = true
 serde_json.workspace = true
 console_error_panic_hook = "0.1.7"
-gloo-net = "0.6.0"
 futures = "0.3.31"
+gloo-net = "0.6.0"
 patternfly-yew = { version = "0.6", features = ["tree", "icons-fab"] }
 turf = "0.9.5"
 wasm-bindgen = "=0.2.95" # Must match version in nixpkgs

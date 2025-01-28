@@ -4,7 +4,6 @@ use yew::{platform::spawn_local, prelude::*};
 
 use crate::{api_client::{use_api, ApiClient, ApiClientImpl}};
 use crate::pages::room::reducer::RoomAction;
-use crate::pages::room::RoomLobbyPage;
 use crate::pages::room::socket::Dispatcher;
 
 turf::style_sheet!("src/pages/room/join.scss");

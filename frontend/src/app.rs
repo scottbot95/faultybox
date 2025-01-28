@@ -17,6 +17,10 @@ pub enum Route {
 
     // #[at("/lobby")]
     // Lobby,
+
+    #[not_found]
+    #[at("/404")]
+    NotFound,
 }
 
 fn switch(routes: Route) -> Html {
@@ -24,6 +28,14 @@ fn switch(routes: Route) -> Html {
         Route::Home => html! { <Redirect<Route> to={Route::Room} /> },
         Route::Gecko => html! { <GeckoPage /> },
         Route::Room => html! { <RoomPage /> },
+        Route::NotFound => html! {
+            <div>
+                <h1>{ "Page not found :(" }</h1>
+                <Link<Route> to={Route::Home}>
+                    <button>{"Home"}</button>
+                </Link<Route>>
+            </div>
+        },
     }
 }
 

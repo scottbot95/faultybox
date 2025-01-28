@@ -1,9 +1,12 @@
+use std::str::FromStr;
+use implicit_clone::ImplicitClone;
 use crate::room::{Room, RoomId};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use smol_str::SmolStr;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ClientId(pub String);
+pub struct ClientId(SmolStr);
 
 impl ClientId {
     pub fn random() -> Self {
@@ -16,6 +19,8 @@ impl ClientId {
     }
 }
 
+impl ImplicitClone for ClientId {}
+
 impl std::fmt::Display for ClientId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -24,12 +29,20 @@ impl std::fmt::Display for ClientId {
 
 impl From<String> for ClientId {
     fn from(s: String) -> Self {
-        Self(s)
+        Self(s.into())
     }
 }
 
-impl AsRef<String> for ClientId {
-    fn as_ref(&self) -> &String {
+impl FromStr for ClientId {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.into()))
+    }
+}
+
+impl AsRef<str> for ClientId {
+    fn as_ref(&self) -> &str {
         &self.0
     }
 }

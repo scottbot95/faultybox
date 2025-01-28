@@ -1,13 +1,15 @@
-mod reducer;
+mod nameplate;
 
+use std::rc::Rc;
 use yew::prelude::*;
 use models::room::Room;
+use crate::pages::room::lobby::nameplate::NamePlate;
 
 turf::style_sheet!("src/pages/room/lobby/lobby.scss");
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Props {
-    pub room: Room,
+    pub room: Rc<Room>,
 }
 
 #[function_component(RoomLobbyPage)]
@@ -18,10 +20,10 @@ pub fn page(props: &Props) -> Html {
             <p>{ format!("Game Kind: {:?}", props.room.game) }</p>
             <p>{"Members:"}</p>
             <ul>
-                {props.room.members.iter().map(|(client_id, member)| html!{
+                {props.room.members.keys().map(|client_id| html!{
                     <li key={client_id.to_string()}>
                         {"Name:"}
-                        {member.nickname.clone().unwrap_or_else(|| "Unknown".to_string())}
+                        <NamePlate {client_id}/>
                     </li>
                 }).collect::<Html>()}
             </ul>

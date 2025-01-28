@@ -7,5 +7,9 @@ edition = "2021"
 
 [dependencies]
 serde.workspace = true
+smol_str.workspace = true
 rand.workspace = true
+
+# Must match the version used by yew
+implicit-clone = "0.4.9"
 serde_arrays = "0.1"
