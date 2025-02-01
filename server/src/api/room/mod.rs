@@ -6,12 +6,11 @@ mod socket;
 use crate::api::room::auth::AuthError;
 use crate::AppState;
 use axum::extract::FromRef;
-use axum::routing::{any, get, post};
+use axum::routing::{any, post};
 use axum::Router;
-use models::room::api::ClientId;
+use models::room::api::{ClientId, CreateRoomInput};
 use models::room::{Room, RoomId, RoomMember};
 use models::ws::{ClientMsg, ServerMsg};
-use models::GameKind;
 use std::collections::hash_map::Entry;
 use std::collections::hash_map::Entry::Occupied;
 use std::collections::HashMap;
@@ -68,7 +67,7 @@ impl RoomState {
             let dirty = match msg {
                 ClientMsg::SetNickname(name) => {
                     if let Some(m) = self.room.write().await.members.get_mut(&client_id) {
-                        m.nickname = Some(name);
+                        m.nickname = name;
                     }
                     true
                 }
@@ -103,7 +102,11 @@ impl FromRef<AppState> for RoomApiState {
 }
 
 impl RoomApiState {
-    async fn create_room(&self, game_kind: GameKind) -> Result<(RoomId, RoomState), AuthError> {
+    async fn create_room(&self, input: CreateRoomInput) -> Result<(RoomId, RoomState), AuthError> {
+        let CreateRoomInput {
+            game_kind,
+            nickname,
+        } = input;
         let mut rooms = self.rooms.write().await;
         let mut room_id = RoomId::random();
         let mut attempts = 1;
@@ -124,7 +127,7 @@ impl RoomApiState {
             game: game_kind,
             members: HashMap::from([
                 // include the leader
-                (leader.clone(), RoomMember::new(leader.clone())),
+                (leader.clone(), RoomMember::new(leader.clone(), nickname)),
             ]),
             leader,
         };
@@ -150,7 +153,7 @@ impl RoomApiState {
 
 pub fn room_api() -> Router<AppState> {
     Router::new()
-        .route("/create/{gameId}", post(create::create_room))
-        .route("/join/{roomId}", get(join::join_room))
+        .route("/create", post(create::create_room))
+        .route("/join", post(join::join_room))
         .route("/connect", any(socket::connect))
 }

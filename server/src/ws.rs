@@ -18,6 +18,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 
 pub struct WebSocketUpgrade<S, R, F = DefaultOnFailedUpgrade> {
     upgrade: ws::WebSocketUpgrade<F>,
+    #[allow(clippy::type_complexity)]
     _marker: PhantomData<fn() -> (S, R, F)>,
 }
 

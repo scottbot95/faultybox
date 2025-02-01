@@ -1,9 +1,9 @@
 mod nameplate;
 
+use crate::pages::room::lobby::nameplate::NamePlate;
+use models::room::Room;
 use std::rc::Rc;
 use yew::prelude::*;
-use models::room::Room;
-use crate::pages::room::lobby::nameplate::NamePlate;
 
 turf::style_sheet!("src/pages/room/lobby/lobby.scss");
 

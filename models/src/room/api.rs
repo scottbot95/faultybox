@@ -1,9 +1,10 @@
-use std::str::FromStr;
-use implicit_clone::ImplicitClone;
 use crate::room::{Room, RoomId};
+use crate::GameKind;
+use implicit_clone::ImplicitClone;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
+use std::str::FromStr;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ClientId(SmolStr);
@@ -51,6 +52,18 @@ impl AsRef<str> for ClientId {
 pub struct Claims {
     pub sub: ClientId,
     pub room_id: RoomId,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateRoomInput {
+    pub game_kind: GameKind,
+    pub nickname: SmolStr,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JoinRoomInput {
+    pub room_id: RoomId,
+    pub nickname: SmolStr,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

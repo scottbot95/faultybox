@@ -1,35 +1,36 @@
 use crate::api::room::auth::{create_token, AuthError};
 use crate::api::room::{ClientId, RoomApiState, RoomState};
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::Json;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
-use models::room::api::{Claims, JoinRoomOutput};
-use models::room::{RoomId, RoomMember};
+use models::room::api::{Claims, JoinRoomInput, JoinRoomOutput};
+use models::room::RoomMember;
 use std::collections::hash_map::Entry;
 
-/// /api/room/join/{room_id}
+/// /api/room/join/
 pub async fn join_room(
-    Path(room_id): Path<RoomId>,
     jar: CookieJar,
     State(state): State<RoomApiState>,
+    Json(input): Json<JoinRoomInput>,
 ) -> Result<(CookieJar, Json<JoinRoomOutput>), AuthError> {
     let state = state
         .rooms
         .read()
         .await
-        .get(&room_id)
-        .ok_or_else(|| AuthError::NotFound(format!("Room {} not found", room_id)))?
+        .get(&input.room_id)
+        .ok_or_else(|| AuthError::NotFound(format!("Room {} not found", input.room_id)))?
         .clone();
-    join_room_impl(None, room_id, jar, state).await
+    join_room_impl(None, jar, state, input).await
 }
 
 pub async fn join_room_impl(
     given_client_id: Option<ClientId>,
-    room_id: RoomId,
     jar: CookieJar,
     state: RoomState,
+    input: JoinRoomInput,
 ) -> Result<(CookieJar, Json<JoinRoomOutput>), AuthError> {
+    let JoinRoomInput { room_id, nickname } = input;
     let assert_new_client = given_client_id.is_none();
     let client_id = given_client_id.unwrap_or_else(ClientId::random);
     match state.clients.write().await.entry(client_id.clone()) {
@@ -52,7 +53,7 @@ pub async fn join_room_impl(
                 }
             }
             Entry::Vacant(vacant) => {
-                vacant.insert(RoomMember::new(client_id.clone()));
+                vacant.insert(RoomMember::new(client_id.clone(), nickname));
             }
         }
     }

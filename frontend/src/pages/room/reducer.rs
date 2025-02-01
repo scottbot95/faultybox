@@ -1,6 +1,6 @@
 use models::room::Room;
-use yew::Reducible;
 use std::rc::Rc;
+use yew::Reducible;
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct RoomState {
@@ -16,9 +16,7 @@ impl Reducible for RoomState {
 
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         match action {
-            RoomAction::UpdateRoom(room) => Self {
-                room: Some(room),
-            }.into()
+            RoomAction::UpdateRoom(room) => Self { room: Some(room) }.into(),
         }
     }
 }

@@ -1,12 +1,12 @@
-use std::pin::pin;
+use crate::pages::room::reducer::RoomState;
 use futures::channel::oneshot::{Receiver, Sender};
-use futures::{select, StreamExt, FutureExt};
+use futures::{select, FutureExt, StreamExt};
 use gloo_net::websocket::futures::WebSocket;
 use gloo_net::websocket::Message;
+use models::ws::ServerMsg;
+use std::pin::pin;
 use yew::platform::spawn_local;
 use yew::{TearDown, UseReducerDispatcher};
-use models::ws::ServerMsg;
-use crate::pages::room::reducer::RoomState;
 
 pub(super) type Dispatcher = UseReducerDispatcher<RoomState>;
 
@@ -28,24 +28,29 @@ impl SocketHandler {
         let mut fut = pin!(async move {
             while let Some(msg) = read.next().await {
                 let server_msg = match msg {
-                        Ok(Message::Text(text)) => {
-                            log::debug!("WebSocket Received Text: {}", text);
-                            serde_json::from_str::<ServerMsg>(&text)
-                        }
-                        Ok(Message::Bytes(bytes)) => {
-                            log::debug!("WebSocket Received Bytes: {:?} (\"{}\")", &bytes, String::from_utf8_lossy(&bytes));
-                            serde_json::from_slice(&bytes)
-                        }
-                        Err(e) => {
-                            log::error!("Error: {:?}", e);
-                            break;
-                        }
-                    };
-                    if let Ok(msg) = server_msg {
-                        self.handle_msg(msg);
+                    Ok(Message::Text(text)) => {
+                        log::debug!("WebSocket Received Text: {}", text);
+                        serde_json::from_str::<ServerMsg>(&text)
                     }
+                    Ok(Message::Bytes(bytes)) => {
+                        log::debug!(
+                            "WebSocket Received Bytes: {:?} (\"{}\")",
+                            &bytes,
+                            String::from_utf8_lossy(&bytes)
+                        );
+                        serde_json::from_slice(&bytes)
+                    }
+                    Err(e) => {
+                        log::error!("Error: {:?}", e);
+                        break;
+                    }
+                };
+                if let Ok(msg) = server_msg {
+                    self.handle_msg(msg);
+                }
             }
-        }.fuse());
+        }
+        .fuse());
         select! {
             _ = fut => {}
             _ = control_rx => {}
@@ -59,7 +64,8 @@ impl SocketHandler {
 
         match msg {
             ServerMsg::RoomUpdate(room) => {
-                self.dispatcher.dispatch(super::reducer::RoomAction::UpdateRoom(room));
+                self.dispatcher
+                    .dispatch(super::reducer::RoomAction::UpdateRoom(room));
             }
         }
     }
@@ -67,16 +73,14 @@ impl SocketHandler {
 
 pub(super) enum SocketTearDown {
     Nop,
-    CloseSocket {
-        control_tx: Sender<()>
-    },
+    CloseSocket { control_tx: Sender<()> },
 }
 
 impl TearDown for SocketTearDown {
     fn tear_down(self) {
         match self {
             SocketTearDown::Nop => {}
-            SocketTearDown::CloseSocket {control_tx} => {
+            SocketTearDown::CloseSocket { control_tx } => {
                 if control_tx.send(()).is_err() {
                     log::warn!("Websocket closed already");
                 }

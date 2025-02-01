@@ -1,19 +1,19 @@
-mod lobby;
 mod create;
 mod join;
+mod lobby;
 mod reducer;
 mod socket;
 
 use std::rc::Rc;
 use yew::prelude::*;
 
-pub use lobby::*;
-pub use create::*;
-pub use join::*;
-use models::room::Room;
 use crate::api_client::{use_api, ApiClient, ApiClientImpl};
 use crate::pages::room::reducer::RoomState;
 use crate::pages::room::socket::{Dispatcher, SocketHandler, SocketTearDown};
+pub use create::*;
+pub use join::*;
+pub use lobby::*;
+use models::room::Room;
 
 #[function_component(RoomPage)]
 pub fn room_page() -> Html {
@@ -29,9 +29,7 @@ pub fn room_page() -> Html {
                 return SocketTearDown::Nop;
             }
             let ws = client.connect_room().expect("Unable to connect to room");
-            let handler = SocketHandler {
-                dispatcher
-            };
+            let handler = SocketHandler { dispatcher };
 
             handler.spawn(ws)
         });
@@ -67,28 +65,26 @@ pub fn room_page() -> Html {
                         </div>
                     </div>
                 }
-
-            },
+            }
             Some(JoinKind::Create) => {
                 let dispatcher = room_state.dispatcher();
                 html! {
                     <RoomCreatePage {dispatcher} />
                 }
-            },
+            }
             Some(JoinKind::Join) => {
                 let dispatcher = room_state.dispatcher();
                 html! {
                     <RoomJoinPage {dispatcher} />
                 }
-            },
+            }
         }
     }
-
 }
 
 enum JoinKind {
     /// Create a new room
     Create,
-    ///
+    /// Join an existing room
     Join,
 }
