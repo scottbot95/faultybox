@@ -16,12 +16,12 @@ let
 
     dontNpmBuild = true;
 
-    npmDepsHash = "sha256-NPz8drcMG8uaRthbGJuJojObnCzYrsN8tG8CmFmBmg0=";
+    npmDepsHash = "sha256-auK6NUGjdQyGTawrITh2+XUymLZP77PraE5IYnR8hOM=";
 #    npmDepsHash = lib.fakeHash;
   };
 
   src = let
-    customFilter = path: _type: builtins.match ".*(ron|html|scss)$" path != null;
+    customFilter = path: _type: builtins.match "(.*/frontend/assets/.*|.*(ron|html|scss))$" path != null;
     customOrCargo = path: type:
       (customFilter path type) || (craneLib.filterCargoSources path type);
   in lib.cleanSourceWith {
@@ -57,12 +57,13 @@ let
     postPatch = ''
       mkdir -p ./frontend/node_modules
       cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/\@patternfly ./frontend/node_modules/
+      cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/\@fortawesome ./frontend/node_modules/
     '';
 
     buildPhaseCargoCommand = ''
       export PATH=${node_modules}/lib/node_modules/faultybox/node_modules/.bin:$PATH
       cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
-      cargo make build -j $NIX_BUILD_CORES --release --message-format json-render-diagnostics >$cargoBuildLog
+      cargo make build -j $NIX_BUILD_CORES --release --message-format json-render-diagnostics | tee $cargoBuildLog
     '';
 
     installPhaseCommand = ''
