@@ -32,16 +32,24 @@ pub trait ApiClient {
 #[derive(Clone, PartialEq)]
 pub struct ApiClientImpl {
     host: String,
+    secure: bool
 }
 
 impl ApiClientImpl {
     pub fn new_from_window() -> std::result::Result<Self, JsValue> {
-        let host = window().map(|w| w.location().host()).unwrap_or_else(|| {
-            log::warn!("No window object available");
-            Ok("localhost:8080".to_string())
-        })?;
+        let (host, secure) = window()
+            .map(|w| w.location())
+            .map(|l| l.host().and_then(|h| l.protocol().map(|p| (h, match p.as_str() {
+                "https:" => true,
+                "http:" => false,
+                _ => unreachable!("Protocol not recognized")
+            }))))
+            .unwrap_or_else(|| {
+                log::warn!("No window object available");
+                Ok(("localhost:8080".to_string(), false))
+            })?;
 
-        Ok(Self { host })
+        Ok(Self { host, secure })
     }
 
     fn build_request<B: Serialize>(&self, url: &str, body: &B) -> Result<Request> {
@@ -74,7 +82,11 @@ impl ApiClient for ApiClientImpl {
     }
 
     fn connect_room(&self) -> Result<WebSocket> {
-        let url = format!("ws://{}/api/room/connect", self.host);
+        let proto = match self.secure {
+            true => "wss",
+            false => "ws",
+        };
+        let url = format!("{}://{}/api/room/connect", proto, self.host);
         let ws = WebSocket::open(&url)?;
         Ok(ws)
     }
