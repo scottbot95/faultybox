@@ -1,4 +1,4 @@
-use crate::pages::room::reducer::RoomState;
+use crate::pages::room::reducer::{CloseReason, RoomAction, RoomState};
 use futures::channel::oneshot::{Receiver, Sender};
 use futures::{select, FutureExt, StreamExt};
 use gloo_net::websocket::futures::WebSocket;
@@ -25,6 +25,7 @@ impl SocketHandler {
 
     async fn handle_socket(self, ws: WebSocket, mut control_rx: Receiver<()>) {
         let (write, mut read) = ws.split();
+        let dispatcher = self.dispatcher.clone();
         let mut fut = pin!(async move {
             while let Some(msg) = read.next().await {
                 let server_msg = match msg {
@@ -57,6 +58,7 @@ impl SocketHandler {
         }
 
         log::info!("Socket read closed");
+        dispatcher.dispatch(RoomAction::RoomClosed(CloseReason::RoomEnded));
     }
 
     fn handle_msg(&self, msg: ServerMsg) {
@@ -65,7 +67,7 @@ impl SocketHandler {
         match msg {
             ServerMsg::RoomUpdate(room) => {
                 self.dispatcher
-                    .dispatch(super::reducer::RoomAction::UpdateRoom(room));
+                    .dispatch(RoomAction::UpdateRoom(room));
             }
         }
     }

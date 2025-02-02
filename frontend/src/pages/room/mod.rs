@@ -5,8 +5,9 @@ mod reducer;
 mod socket;
 
 use std::rc::Rc;
+use patternfly_yew::prelude::*;
 use yew::prelude::*;
-
+use yew_router::prelude::Link;
 use crate::api_client::{use_api, ApiClient, ApiClientImpl};
 use crate::pages::room::reducer::RoomState;
 use crate::pages::room::socket::{Dispatcher, SocketHandler, SocketTearDown};
@@ -14,6 +15,7 @@ pub use create::*;
 pub use join::*;
 pub use lobby::*;
 use models::room::Room;
+use crate::app::Route;
 
 #[function_component(RoomPage)]
 pub fn room_page() -> Html {
@@ -35,8 +37,18 @@ pub fn room_page() -> Html {
         });
     }
 
-    if let Some(room) = room_state.room.clone() {
-        let room = Rc::new(room);
+    if let Some(error) = room_state.error.clone() {
+        html! {
+            <div>
+                <Alert inline=true title="An Error Occurred" r#type={AlertType::Danger}>
+                    {&*error}
+                </Alert>
+                <Link<Route> to={Route::Home}>
+                    <Button>{"Go Home"}</Button>
+                </Link<Route>>
+            </div>
+        }
+    } else if let Some(room) = room_state.room.clone() {
         html! {
             <ContextProvider<Rc<Room>> context={room.clone()}>
                 <RoomLobbyPage {room} />
