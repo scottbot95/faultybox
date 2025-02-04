@@ -1,3 +1,5 @@
+use std::time::Duration;
+use axum::body::Bytes;
 use crate::api::room::auth::RoomToken;
 use crate::api::room::{ClientState, RoomApiState, RoomState};
 use crate::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -10,6 +12,7 @@ use models::room::api::{Claims, ClientId};
 use models::ws::{ClientMsg, ServerMsg};
 use tokio::spawn;
 use tokio::sync::broadcast::error::RecvError;
+use tokio::time::sleep;
 
 pub async fn connect(
     RoomToken(claims): RoomToken,
@@ -28,7 +31,12 @@ pub async fn connect(
         return Ok((StatusCode::FORBIDDEN, "Invalid token").into_response());
     }
 
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, claims, room)))
+    let resp = ws
+        .on_failed_upgrade(|e| {
+            tracing::warn!("Failed to establish websocket: {}", e);
+        })
+        .on_upgrade(move |socket| handle_socket(socket, claims, room));
+    Ok(resp)
 }
 
 async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, state: RoomState) {
@@ -53,19 +61,29 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
         let client_id = client_id.clone();
         spawn(async move {
             loop {
-                let next = broadcast_rx.recv().await;
-                match next {
-                    Ok(msg) => {
-                        let result = send.send(Message::Item(msg)).await;
+                tokio::select! {
+                    next = broadcast_rx.recv() => match next {
+                        Ok(msg) => {
+                            let result = send.send(Message::Item(msg)).await;
+                            if let Err(e) = result {
+                                tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                            }
+                        }
+                        Err(RecvError::Lagged(n)) => {
+                            tracing::warn!("Broadcast for {} lagging. Missed {} message", client_id, n);
+                        }
+                        Err(RecvError::Closed) => {
+                            break;
+                        }
+                    },
+                    _ = sleep(Duration::from_secs(55)) => {
+                        // It's been a while since we sent anything,
+                        // send a Ping to keep the connection alive
+                        tracing::trace!("Heartbeating socket for {} in room {}", client_id, room_id);
+                        let result = send.send(Message::Ping(Bytes::new())).await;
                         if let Err(e) = result {
                             tracing::warn!("Error sending message to client {}: {}", client_id, e);
                         }
-                    }
-                    Err(RecvError::Lagged(n)) => {
-                        tracing::warn!("Broadcast for {} lagging. Missed {} message", client_id, n);
-                    }
-                    Err(RecvError::Closed) => {
-                        break;
                     }
                 }
             }
@@ -98,6 +116,8 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
     // Client socket closed, cleanup the broadcast task
     broadcast_task.abort();
     let _ = broadcast_task.await;
+
+    tracing::trace!("Socket closed: {}", client_id);
 }
 
 async fn read_client(
