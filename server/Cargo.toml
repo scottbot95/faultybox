@@ -25,4 +25,5 @@ tokio = { version = "1.42.0", features = ["full"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["full"] }
 tracing = "0.1.41"
+tracing-journald = "0.3.1"
 tracing-subscriber = "0.3.19"

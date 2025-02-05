@@ -32,8 +32,16 @@ pub async fn connect(
     }
 
     let resp = ws
-        .on_failed_upgrade(|e| {
-            tracing::warn!("Failed to establish websocket: {}", e);
+        .on_failed_upgrade({
+            let claims = claims.clone();
+            move |e| {
+                tracing::warn!(
+                client_id = %claims.sub,
+                room_id = %claims.room_id,
+                "Failed to establish websocket: {}",
+                e
+            );
+            }
         })
         .on_upgrade(move |socket| handle_socket(socket, claims, room));
     Ok(resp)
@@ -42,7 +50,7 @@ pub async fn connect(
 async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, state: RoomState) {
     let room_id = claims.room_id;
     let client_id = claims.sub;
-    tracing::trace!("Client {} connected to room {}", &client_id, room_id);
+    tracing::trace!(%client_id, %room_id, "Client connected");
 
     let (mut send, recv) = socket.split();
 
@@ -52,6 +60,7 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
     let (control_tx, mut control_rx) = tokio::sync::mpsc::channel(1);
 
     let broadcast_task = {
+        let room_id = room_id.clone();
         let client_id = client_id.clone();
         let sender = sender.clone();
         spawn(async move {
@@ -61,13 +70,13 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
                         Ok(msg) => {
                             if sender.send(msg).await.is_err() {
                                 tracing::warn!(
-                                    "Could not forward broadcast for {}. Client receiver channel closed",
-                                    client_id
+                                    %client_id, %room_id,
+                                    "Could not forward broadcast: Client receiver channel closed"
                                 )
                             }
                         }
                         Err(RecvError::Lagged(n)) => {
-                            tracing::warn!("Broadcast for {} lagging. Missed {} message", client_id, n);
+                            tracing::warn!(%client_id, %room_id, "Broadcast lagging. Missed {} message", n);
                         }
                         Err(RecvError::Closed) => {
                             break;
@@ -76,7 +85,7 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
 
                 }
             }
-            tracing::warn!(%client_id, "Broadcast forwarder closed early");
+            tracing::warn!(%client_id, %room_id, "Broadcast forwarder closed early");
         })
     };
 
@@ -90,20 +99,20 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
                         if let Some(msg) = msg {
                             let result = send.send(Message::Item(msg)).await;
                             if let Err(e) = result {
-                                tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                                tracing::warn!(%client_id, %room_id, "Error sending message to client: {}", e);
                             }
                         } else {
-                            tracing::warn!("Receiver channel closed for client: {}", client_id);
+                            tracing::warn!(%client_id, %room_id, "Receiver channel closed");
                             break;
                         }
                     }
                     _ = sleep(Duration::from_secs(55)) => {
                         // It's been a while since we sent anything,
                         // send a Ping to keep the connection alive
-                        tracing::trace!("Heartbeating socket for {} in room {}", client_id, room_id);
+                        tracing::trace!(%client_id, %room_id, "Heartbeating socket.");
                         let result = send.send(Message::Ping(Bytes::new())).await;
                         if let Err(e) = result {
-                            tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                            tracing::warn!(%client_id, %room_id, "Error sending message to client: {}", e);
                         }
                     }
                 }
@@ -121,7 +130,7 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
     );
 
     if let Some(prev) = prev.flatten() {
-        tracing::info!("Client {} reconnected", client_id);
+        tracing::info!(%client_id, %room_id, "Client reconnected");
         let _ = prev.control.send(()).await;
     }
 
@@ -136,10 +145,10 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
     // Listen for client messages
     tokio::select! {
         _ = read_client(client_id.clone(), recv, state.client_messages.clone()) => {
-            tracing::trace!("Client {} closed connection", client_id);
+            tracing::trace!(%client_id, %room_id, "Client closed connection");
         }
         _ = control_rx.recv() => {
-            tracing::trace!("Client {} received close signal", client_id);
+            tracing::trace!(%client_id, %room_id, "Client received close signal");
             control_rx.close();
         }
     }
@@ -152,7 +161,7 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
 
     let _ = tokio::join!(broadcast_task, socket_send_task);
 
-    tracing::trace!("Socket closed: {}", client_id);
+    tracing::trace!(%client_id, %room_id, "Socket closed");
 }
 
 async fn read_client(
@@ -165,12 +174,12 @@ async fn read_client(
             Ok(Message::Item(msg)) => msg,
             Ok(_) => continue,
             Err(err) => {
-                tracing::error!("got error: {}", err);
+                tracing::error!(%client_id, "got error: {}", err);
                 continue;
             }
         };
 
-        tracing::trace!("Message received: {:?}", msg);
+        tracing::trace!(%client_id, "Message received: {:?}", msg);
         sender.send((client_id.clone(), msg)).await.ok();
     }
 }

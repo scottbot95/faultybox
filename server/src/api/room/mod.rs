@@ -142,7 +142,7 @@ impl RoomApiState {
                     room_id = RoomId::random();
                 }
                 Entry::Vacant(e) => {
-                    tracing::info!("Created room {}: {:?}", room_id, room);
+                    tracing::info!(%room_id, "Created room: {:?}", room);
                     let state = e.insert(RoomState::new(room));
                     return Ok((room_id, state.clone()));
                 }

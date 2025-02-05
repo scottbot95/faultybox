@@ -13,7 +13,8 @@ use tokio::signal;
 
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
-
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use crate::api::api_router;
 
 #[derive(Parser, Debug)]
@@ -45,13 +46,7 @@ struct AppState {
 async fn main() {
     let opt = Opt::parse();
 
-    // Setup logging and RUST_LOG from args
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
-    }
-
-    // enable console logging
-    tracing_subscriber::fmt::init();
+    configure_logging(&opt);
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)),
@@ -82,6 +77,28 @@ fn make_router(opt: Opt) -> Router {
         .fallback_service(ServeFile::new(static_dir.join("index.html")))
         .layer(TraceLayer::new_for_http())
         .with_state(AppState::default())
+}
+
+fn configure_logging(opt: &Opt) {
+    // Setup logging and RUST_LOG from args
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
+    }
+
+    // enable console logging
+    let registry = tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer().with_target(true));
+    match tracing_journald::layer() {
+        Ok(layer) => {
+            let layer = layer
+                .with_syslog_identifier("faultybox".to_owned());
+            registry.with(layer).init();
+        },
+        Err(e) => {
+            registry.init();
+            tracing::warn!("Couldn't connect to journald: {}", e);
+        },
+    }
 }
 
 async fn shutdown_signal() {
