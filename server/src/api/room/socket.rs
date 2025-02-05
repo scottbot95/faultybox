@@ -1,8 +1,7 @@
-use std::time::Duration;
-use axum::body::Bytes;
 use crate::api::room::auth::RoomToken;
 use crate::api::room::{ClientState, RoomApiState, RoomState};
 use crate::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -10,6 +9,7 @@ use futures::stream::SplitStream;
 use futures::{SinkExt, StreamExt};
 use models::room::api::{Claims, ClientId};
 use models::ws::{ClientMsg, ServerMsg};
+use std::time::Duration;
 use tokio::spawn;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::time::sleep;
@@ -46,27 +46,24 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
 
     let (mut send, recv) = socket.split();
 
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(10);
     let mut broadcast_rx = state.client_broadcast.subscribe();
-    {
-        let room = state.room.read().await.clone();
-        let msg = ServerMsg::RoomUpdate(room);
-        state
-            .client_broadcast
-            .send(msg)
-            .expect("No receivers on room broadcast channel");
-    }
 
-    let (control_tx, mut control_rx) = tokio::sync::mpsc::channel(16);
+    let (control_tx, mut control_rx) = tokio::sync::mpsc::channel(1);
+
     let broadcast_task = {
         let client_id = client_id.clone();
+        let sender = sender.clone();
         spawn(async move {
             loop {
                 tokio::select! {
                     next = broadcast_rx.recv() => match next {
                         Ok(msg) => {
-                            let result = send.send(Message::Item(msg)).await;
-                            if let Err(e) = result {
-                                tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                            if sender.send(msg).await.is_err() {
+                                tracing::warn!(
+                                    "Could not forward broadcast for {}. Client receiver channel closed",
+                                    client_id
+                                )
                             }
                         }
                         Err(RecvError::Lagged(n)) => {
@@ -76,6 +73,30 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
                             break;
                         }
                     },
+
+                }
+            }
+            tracing::warn!(%client_id, "Broadcast forwarder closed early");
+        })
+    };
+
+    let socket_send_task = {
+        let room_id = room_id.clone();
+        let client_id = client_id.clone();
+        spawn(async move {
+            loop {
+                tokio::select! {
+                    msg = receiver.recv() => {
+                        if let Some(msg) = msg {
+                            let result = send.send(Message::Item(msg)).await;
+                            if let Err(e) = result {
+                                tracing::warn!("Error sending message to client {}: {}", client_id, e);
+                            }
+                        } else {
+                            tracing::warn!("Receiver channel closed for client: {}", client_id);
+                            break;
+                        }
+                    }
                     _ = sleep(Duration::from_secs(55)) => {
                         // It's been a while since we sent anything,
                         // send a Ping to keep the connection alive
@@ -87,13 +108,14 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
                     }
                 }
             }
+            tracing::warn!(%client_id, %room_id, "WebSocket sender closed early");
         })
     };
 
     let prev = state.clients.write().await.insert(
         client_id.clone(),
         Some(ClientState {
-            sender: state.client_broadcast.clone(),
+            sender,
             control: control_tx,
         }),
     );
@@ -103,19 +125,32 @@ async fn handle_socket(socket: WebSocket<ServerMsg, ClientMsg>, claims: Claims, 
         let _ = prev.control.send(()).await;
     }
 
-    // Listen for client messages
-    tokio::select! {
-        _ = read_client(client_id.clone(), recv, state.client_messages.clone()) => {
-            tracing::trace!("Client {} closed connection", client_id)
-        }
-        _ = control_rx.recv() => {
-            tracing::trace!("Closed old client {} connection", client_id)
+    {
+        let room = state.room.read().await.clone();
+        let msg = ServerMsg::RoomUpdate(room);
+        if state.client_broadcast.send(msg).is_err() {
+            tracing::error!(%client_id, %room_id, "No receivers on room broadcast channel");
         }
     }
 
+    // Listen for client messages
+    tokio::select! {
+        _ = read_client(client_id.clone(), recv, state.client_messages.clone()) => {
+            tracing::trace!("Client {} closed connection", client_id);
+        }
+        _ = control_rx.recv() => {
+            tracing::trace!("Client {} received close signal", client_id);
+            control_rx.close();
+        }
+    }
+
+    tracing::trace!(%client_id, %room_id, "Closing Socket");
+
     // Client socket closed, cleanup the broadcast task
     broadcast_task.abort();
-    let _ = broadcast_task.await;
+    socket_send_task.abort();
+
+    let _ = tokio::join!(broadcast_task, socket_send_task);
 
     tracing::trace!("Socket closed: {}", client_id);
 }

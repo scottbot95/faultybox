@@ -31,7 +31,7 @@ pub(crate) struct RoomApiState {
 #[derive(Clone)]
 pub struct ClientState {
     /// Messages sent to this channel will be sent to the client
-    sender: tokio::sync::broadcast::Sender<ServerMsg>,
+    sender: tokio::sync::mpsc::Sender<ServerMsg>,
     /// Sending any message to this channel will trigger the client socket to be closed
     control: tokio::sync::mpsc::Sender<()>,
 }
