@@ -4,8 +4,9 @@
 }:
 let
   inherit (pkgs) lib buildNpmPackage;
+  inherit (lib) cleanSourceWith optionals hasSuffix hasInfix;
 
-  node_modules = buildNpmPackage rec {
+  node_modules = buildNpmPackage {
     pname = "faultybox-frontend-assets";
     version = "0.1.0";
     src = lib.cleanSourceWith {
@@ -17,66 +18,75 @@ let
     dontNpmBuild = true;
 
     npmDepsHash = "sha256-auK6NUGjdQyGTawrITh2+XUymLZP77PraE5IYnR8hOM=";
-#    npmDepsHash = lib.fakeHash;
+    # npmDepsHash = lib.fakeHash;
   };
 
-  src = let
-    customFilter = path: _type: builtins.match "(.*/frontend/assets/.*|.*(ron|html|scss))$" path != null;
-    customOrCargo = path: type:
-      (customFilter path type) || (craneLib.filterCargoSources path type);
-  in lib.cleanSourceWith {
+  src = cleanSourceWith {
     src = ../.;
-    filter = customOrCargo;
+    filter = path: type:
+      (hasSuffix "\.html" path) ||
+      (hasSuffix "\.scss" path) ||
+      (hasSuffix "\.ron" path) ||
+      (hasInfix "/assets/" path) ||
+      (craneLib.filterCargoSources path type);
   };
 
-  nativeBuildInputs = with pkgs; [
-    makeWrapper
-    cargo-make
-    trunk
-    wasm-bindgen-cli
-  ];
+  commonArgs = {
+    inherit src;
+    strictDeps = true;
 
-  buildInputs = [
-    # Add additional build inputs here
-  ] ++ lib.optionals pkgs.stdenv.isDarwin [
-    # Additional darwin specific inputs can be set here
-    pkgs.libiconv
-  ];
+    buildInputs = [
+      # Add additional build inputs here
+    ] ++ optionals pkgs.stdenv.isDarwin [
+      # Additional darwin specific inputs can be set here
+      pkgs.libiconv
+    ];
+  };
+
+  nativeArgs = commonArgs // {
+
+  };
 
   # Build *just* the cargo dependencies, so we can reuse
   # all of that work (e.g. via cachix) when running in CI
-  cargoArtifacts = craneLib.buildDepsOnly {
-    inherit src buildInputs;
+  cargoArtifacts = craneLib.buildDepsOnly nativeArgs;
+
+  wasmArgs = commonArgs // {
+    pname = "faultybox-wasm";
+    cargoExtraArgs = "--package=frontend";
+    CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
   };
 
-  # Build the actual crate itself, reusing the dependency
-  # artifacts from above.
-  faultybox = craneLib.buildPackage {
-    inherit cargoArtifacts src buildInputs nativeBuildInputs;
+  cargoArtifactsWasm = craneLib.buildDepsOnly wasmArgs;
 
-    postPatch = ''
-      mkdir -p ./frontend/node_modules
-      cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/\@patternfly ./frontend/node_modules/
-      cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/\@fortawesome ./frontend/node_modules/
+  frontend = craneLib.buildTrunkPackage (wasmArgs // {
+    pname = "faultybox-frontend";
+    cargoArtifacts = cargoArtifactsWasm;
+    trunkExtraBuildArgs = "--public-url /assets/";
+
+    wasm-bindgen-cli = pkgs.wasm-bindgen-cli_0_2_100;
+
+    # Trunk expects the current directory to be the crate to compile.
+    # Also pull in node_modules
+    preBuild = ''
+      cd ./frontend
+
+      mkdir -p ./node_modules
+      cp -r ${node_modules}/lib/node_modules/faultybox/node_modules/* ./node_modules/
     '';
 
-    buildPhaseCargoCommand = ''
-      export PATH=${node_modules}/lib/node_modules/faultybox/node_modules/.bin:$PATH
-      cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
-      cargo make build -j $NIX_BUILD_CORES --release --message-format json-render-diagnostics | tee $cargoBuildLog
+    postBuild = ''
+      cd ..
     '';
+  });
 
-    installPhaseCommand = ''
-      mkdir -p $out/bin
-      
-      cp -v ./target/release/server $out/bin/
-      cp -rv ./dist/ $out/
+  faultybox = craneLib.buildPackage (nativeArgs // {
+    inherit cargoArtifacts;
 
-      wrapProgram $out/bin/server --add-flags "--static-dir $out/dist/"
-    '';
-  };
+    FRONTEND_DIST = frontend;
+  });
 in {
-  inherit faultybox;
+  inherit faultybox node_modules;
 
   default = faultybox;
 }

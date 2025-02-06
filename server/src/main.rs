@@ -31,10 +31,6 @@ struct Opt {
     /// Set the listen port
     #[clap(short = 'p', long = "port", default_value = "8080")]
     port: u16,
-
-    /// Set the directory where static files are to be found
-    #[clap(long = "static-dir", default_value = "./dist")]
-    static_dir: String,
 }
 
 #[derive(FromRef, Clone, Default)]
@@ -58,7 +54,7 @@ async fn main() {
 
     log::info!("listening on http://{}", listener.local_addr().unwrap());
 
-    let app = make_router(opt);
+    let app = make_router();
     tracing::trace!("Router configured: {:?}", app);
 
     axum::serve(listener, app)
@@ -67,8 +63,10 @@ async fn main() {
         .expect("Unable to start server")
 }
 
-fn make_router(opt: Opt) -> Router {
-    let static_dir = Path::new(&opt.static_dir);
+fn make_router() -> Router {
+    let static_dir = option_env!("FRONTEND_DIST").unwrap_or("./dist");
+    let static_dir = Path::new(static_dir);
+    tracing::debug!("Using frontend dir: {:?}", static_dir);
     let serve_dir = ServeDir::new(static_dir);
 
     Router::new()
